@@ -1,0 +1,38 @@
+
+package:
+  name: zuspec-be-py
+
+  setup-deps:
+  - ninja
+  - cython
+
+  dep-sets:
+
+  - name: default
+    deps: []
+
+  - name: default-dev
+    deps:
+    - name: zuspec-dataclasses
+      url: https://github.com/zuspec/zuspec-dataclasses.git
+      branch: mballance/refactor
+    - name: zuspec-fe-py
+      url: https://github.com/zuspec/zuspec-fe-py.git
+    - name: pytest
+      src: pypi
+    - name: Sphinx
+      src: pypi
+    - name: sphinx-argparse
+      src: pypi
+    - name: sphinxcontrib-makedomain
+      src: pypi
+    - name: sphinxcontrib-openapi
+      src: pypi
+    - name: sphinxcontrib-spelling
+      src: pypi
+    - name: sphinx-rtd-theme
+      src: pypi
+    - name: sphinx-jsonschema
+      src: pypi
+
+
