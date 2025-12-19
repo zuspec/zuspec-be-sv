@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zuspec-be-py"
+name = "zuspec-be-sv"
 description = "Zuspec SystemVerilog backend"
 readme = "README.md"
 requires-python = ">=3.7"
