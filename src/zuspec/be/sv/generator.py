@@ -81,6 +81,20 @@ class SVGenerator:
         lines.append(");")
         lines.append("")
         
+        # Generate internal register declarations for non-InOut fields
+        internal_fields = [f for f in comp.fields if not isinstance(f, dm.FieldInOut)]
+        for field in internal_fields:
+            if isinstance(field.datatype, dm.DataTypeInt):
+                if field.datatype.bits == 1 or field.datatype.bits == -1:
+                    lines.append(f"  reg {field.name};")
+                else:
+                    lines.append(f"  reg [{field.datatype.bits-1}:0] {field.name};")
+            else:
+                lines.append(f"  reg {field.name};")
+        
+        if internal_fields:
+            lines.append("")
+        
         # Generate sync processes (always blocks)
         for func in comp.sync_processes:
             lines.extend(self._generate_sync_process(func, comp))
@@ -188,6 +202,15 @@ class SVGenerator:
             op = self._get_sv_binop(expr.op)
             return f"{left} {op} {right}"
         
+        elif isinstance(expr, dm.ExprCompare):
+            # Handle comparison expressions
+            result = self._generate_expr(expr.left, comp)
+            for i, (op, comparator) in enumerate(zip(expr.ops, expr.comparators)):
+                cmp_op = self._get_sv_cmpop(op)
+                cmp_expr = self._generate_expr(comparator, comp)
+                result = f"{result} {cmp_op} {cmp_expr}"
+            return result
+        
         return "/* unknown expr */"
 
     def _get_sv_binop(self, op: dm.BinOp) -> str:
@@ -213,5 +236,17 @@ class SVGenerator:
             dm.AugOp.Sub: "-",
             dm.AugOp.Mult: "*",
             dm.AugOp.Div: "/",
+        }
+        return op_map.get(op, "?")
+
+    def _get_sv_cmpop(self, op: dm.CmpOp) -> str:
+        """Convert comparison operator to SystemVerilog."""
+        op_map = {
+            dm.CmpOp.Eq: "==",
+            dm.CmpOp.NotEq: "!=",
+            dm.CmpOp.Lt: "<",
+            dm.CmpOp.LtE: "<=",
+            dm.CmpOp.Gt: ">",
+            dm.CmpOp.GtE: ">=",
         }
         return op_map.get(op, "?")

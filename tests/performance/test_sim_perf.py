@@ -84,6 +84,17 @@ def benchmark_simulation(name, component_class, testbench, cycles, tmpdir, sim):
     end_time = time.perf_counter()
     elapsed = end_time - start_time
     
+    # Check if simulation succeeded
+    if out is None or not hasattr(out, 'output') or out.output is None:
+        return {
+            'name': name,
+            'cycles': cycles,
+            'total_time': elapsed,
+            'sim_time_ns': 0,
+            'throughput': 0,
+            'success': False
+        }
+    
     # Extract simulation time from log
     rundir_fs = None
     for fs in out.output:

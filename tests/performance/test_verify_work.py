@@ -59,14 +59,17 @@ int main(int argc, char **argv) {{
     Counter comp;
     Counter_init(&ctxt, &comp, "counter", NULL);
     
+    // Reset the counter
     comp.reset = 1;
     comp.clock = 1;
+    Counter__count(&comp);  // Call sync process on clock edge
     comp.clock = 0;
     comp.reset = 0;
     
     // Run cycles
     for (int i = 0; i < {cycles}; i++) {{
         comp.clock = 1;
+        Counter__count(&comp);  // Call sync process on positive clock edge
         comp.clock = 0;
     }}
     
@@ -163,14 +166,17 @@ int main(int argc, char **argv) {{
     Counter comp;
     Counter_init(&ctxt, &comp, "counter", NULL);
     
+    // Reset the counter
     comp.reset = 1;
     comp.clock = 1;
+    Counter__count(&comp);  // Call sync process on clock edge
     comp.clock = 0;
     comp.reset = 0;
     
     // Run cycles
     for (int i = 0; i < 1000000; i++) {{
         comp.clock = 1;
+        Counter__count(&comp);  // Call sync process on positive clock edge
         comp.clock = 0;
     }}
     
