@@ -30,9 +30,9 @@ def test_basic_counter():
     
     # Verify module structure
     assert "module" in sv_code
-    assert "input  clock" in sv_code or "input clock" in sv_code
-    assert "input  reset" in sv_code or "input reset" in sv_code
-    assert "output reg[31:0] count" in sv_code
+    assert "input logic clock" in sv_code
+    assert "input logic reset" in sv_code
+    assert "output logic [31:0] count" in sv_code
     
     # Verify always block
     assert "always @(posedge clock or posedge reset)" in sv_code
@@ -67,19 +67,19 @@ def test_bit_widths():
     sv_code = generator._generate_component(list(ctxt.type_m.values())[0])
     
     # Check single bit (no width specifier)
-    assert re.search(r'input\s+b1', sv_code)
+    assert re.search(r'input\s+logic\s+b1', sv_code)
     
     # Check 8-bit
-    assert "input reg[7:0] b8" in sv_code or "input  reg[7:0] b8" in sv_code
+    assert "input logic [7:0] b8" in sv_code
     
     # Check 16-bit
-    assert "input reg[15:0] b16" in sv_code or "input  reg[15:0] b16" in sv_code
+    assert "input logic [15:0] b16" in sv_code
     
     # Check 32-bit
-    assert "input reg[31:0] b32" in sv_code or "input  reg[31:0] b32" in sv_code
+    assert "input logic [31:0] b32" in sv_code
     
     # Check 64-bit output
-    assert "output reg[63:0] b64" in sv_code
+    assert "output logic [63:0] b64" in sv_code
 
 
 def test_combinational_logic():
@@ -105,7 +105,7 @@ def test_combinational_logic():
     # This test verifies the component structure at least
     sv_code = generator._generate_component(comp)
     assert "module" in sv_code
-    assert "input reg[15:0] a" in sv_code or "input  reg[15:0] a" in sv_code
+    assert "input logic [15:0] a" in sv_code
 
 
 def test_arithmetic_operations():
@@ -284,6 +284,47 @@ def test_name_sanitization():
         assert '>' not in module_name
 
 
+def test_extern_component_instantiation():
+    """Extern instances should become SV module instances with port connections."""
+
+    @zdc.dataclass
+    class ExtMod(zdc.Extern[zdc.Component]):
+        clock: zdc.bit = zdc.input()
+        reset: zdc.bit = zdc.input()
+        count: zdc.bit32 = zdc.output()
+
+        attributes = {
+            "name": "ext_counter"
+        }
+
+    @zdc.dataclass
+    class Top(zdc.Component):
+        clock: zdc.bit = zdc.input()
+        reset: zdc.bit = zdc.input()
+        count: zdc.bit32 = zdc.output()
+
+        u: ExtMod = zdc.field()
+
+        def __bind__(self):
+            return {
+                self.u.clock: self.clock,
+                self.u.reset: self.reset,
+                self.u.count: self.count,
+            }
+
+    factory = zdc.DataModelFactory()
+    ctxt = factory.build([Top, ExtMod])
+
+    generator = SVGenerator(Path("/tmp"))
+    generator.generate(ctxt)
+    sv_code = generator._generate_component(ctxt.type_m[Top.__qualname__])
+
+    assert "ext_counter u" in sv_code
+    assert ".clock(clock)" in sv_code
+    assert ".reset(reset)" in sv_code
+    assert ".count(count)" in sv_code
+
+
 def test_multiple_outputs():
     """Test component with multiple outputs"""
     
@@ -308,9 +349,9 @@ def test_multiple_outputs():
     sv_code = generator._generate_component(list(ctxt.type_m.values())[0])
     
     # Verify all outputs are declared
-    assert "output reg[31:0] out1" in sv_code
-    assert "output reg[31:0] out2" in sv_code
-    assert "output reg[31:0] out3" in sv_code
+    assert "output logic [31:0] out1" in sv_code
+    assert "output logic [31:0] out2" in sv_code
+    assert "output logic [31:0] out3" in sv_code
     
     # Verify all are assigned
     assert "out1 <= data" in sv_code

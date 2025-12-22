@@ -25,6 +25,7 @@ class SVGenerator:
     def __init__(self, output_dir: Path):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._ctxt: dm.Context = None
 
     def _sanitize_sv_name(self, name: str) -> str:
         """Sanitize a name to be a valid SystemVerilog identifier.
@@ -46,9 +47,12 @@ class SVGenerator:
 
     def generate(self, ctxt: dm.Context) -> List[Path]:
         """Generate SystemVerilog code for all components in context."""
+        self._ctxt = ctxt
         files = []
         
         for name, dtype in ctxt.type_m.items():
+            if isinstance(dtype, dm.DataTypeExtern):
+                continue
             if isinstance(dtype, dm.DataTypeComponent):
                 sv_code = self._generate_component(dtype)
                 # Sanitize name for file (replace invalid chars with underscores)
@@ -81,20 +85,21 @@ class SVGenerator:
         lines.append(");")
         lines.append("")
         
-        # Generate internal register declarations for non-InOut fields
-        internal_fields = [f for f in comp.fields if not isinstance(f, dm.FieldInOut)]
-        for field in internal_fields:
+        # Internal signal declarations
+        for field in comp.fields:
+            if isinstance(field, dm.FieldInOut):
+                continue
             if isinstance(field.datatype, dm.DataTypeInt):
-                if field.datatype.bits == 1 or field.datatype.bits == -1:
-                    lines.append(f"  reg {field.name};")
-                else:
-                    lines.append(f"  reg [{field.datatype.bits-1}:0] {field.name};")
-            else:
-                lines.append(f"  reg {field.name};")
-        
-        if internal_fields:
+                decl_t = self._get_sv_decl_type(field.datatype)
+                lines.append(f"  {decl_t} {field.name};")
+        if any((not isinstance(f, dm.FieldInOut) and isinstance(f.datatype, dm.DataTypeInt)) for f in comp.fields):
             lines.append("")
-        
+
+        # Instantiate extern components using bind map connections
+        lines.extend(self._generate_extern_instances(comp))
+        if len(lines) and lines[-1] != "":
+            lines.append("")
+
         # Generate sync processes (always blocks)
         for func in comp.sync_processes:
             lines.extend(self._generate_sync_process(func, comp))
@@ -108,10 +113,77 @@ class SVGenerator:
         """Convert datamodel type to SystemVerilog type."""
         if isinstance(dtype, dm.DataTypeInt):
             if dtype.bits == 1 or dtype.bits == -1:
-                return ""
+                return "logic"
             else:
-                return f"reg[{dtype.bits-1}:0]"
+                return f"logic [{dtype.bits-1}:0]"
         return ""
+
+    def _get_sv_decl_type(self, dtype: dm.DataType) -> str:
+        if isinstance(dtype, dm.DataTypeInt):
+            if dtype.bits == 1 or dtype.bits == -1:
+                return "logic"
+            return f"logic [{dtype.bits-1}:0]"
+        return "logic"
+
+    def _generate_extern_instances(self, comp: dm.DataTypeComponent) -> List[str]:
+        if self._ctxt is None:
+            return []
+
+        lines: List[str] = []
+
+        for field in comp.fields:
+            if isinstance(field, dm.FieldInOut):
+                continue
+            if not isinstance(field.datatype, dm.DataTypeRef):
+                continue
+
+            ref_t = self._ctxt.type_m.get(field.datatype.ref_name)
+            if not isinstance(ref_t, dm.DataTypeExtern):
+                continue
+
+            inst_name = field.name
+            mod_name = ref_t.extern_name if ref_t.extern_name else (ref_t.py_type.__name__ if ref_t.py_type is not None else inst_name)
+
+            port_conn: Dict[str, str] = {}
+
+            def match_subport(expr) -> Any:
+                if not isinstance(expr, dm.ExprRefField):
+                    return None
+                if not isinstance(expr.base, dm.ExprRefField):
+                    return None
+                if not isinstance(expr.base.base, dm.TypeExprRefSelf):
+                    return None
+                inst_idx = expr.base.index
+                port_idx = expr.index
+                if inst_idx >= len(comp.fields):
+                    return None
+                if comp.fields[inst_idx].name != inst_name:
+                    return None
+                if port_idx >= len(ref_t.fields):
+                    return None
+                return ref_t.fields[port_idx].name
+
+            for b in comp.bind_map:
+                lhs_p = match_subport(b.lhs)
+                rhs_p = match_subport(b.rhs)
+
+                if lhs_p is not None and rhs_p is None:
+                    port_conn[lhs_p] = self._generate_expr(b.rhs, comp)
+                elif rhs_p is not None and lhs_p is None:
+                    port_conn[rhs_p] = self._generate_expr(b.lhs, comp)
+
+            if not port_conn:
+                continue
+
+            lines.append(f"  {mod_name} {inst_name} (")
+            conns = []
+            for pname, pexpr in port_conn.items():
+                conns.append(f"    .{pname}({pexpr})")
+            lines.append(",\n".join(conns))
+            lines.append("  );")
+            lines.append("")
+
+        return lines
 
     def _generate_sync_process(self, func: dm.Function, comp: dm.DataTypeComponent) -> List[str]:
         """Generate SystemVerilog always block from sync process."""

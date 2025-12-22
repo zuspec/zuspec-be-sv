@@ -38,9 +38,9 @@ def test_smoke(tmpdir):
     assert "module test_smoke" in sv_content and "Counter" in sv_content
     
     # Verify ports
-    assert "input  clock" in sv_content or "input clock" in sv_content
-    assert "input  reset" in sv_content or "input reset" in sv_content
-    assert "output reg[31:0] count" in sv_content
+    assert "input logic clock" in sv_content
+    assert "input logic reset" in sv_content
+    assert "output logic [31:0] count" in sv_content
     
     # Verify always block
     assert "always @(posedge clock or posedge reset)" in sv_content
