@@ -1,9 +1,10 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "zuspec-be-sv"
+version = "0.0.1"
 description = "Zuspec SystemVerilog backend"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -11,7 +12,6 @@ license = {text = "Apache-2.0"}
 authors = [
     {name = "Matthew Ballance", email = "matt.ballance@gmail.com"}
 ]
-dynamic = ["version"]
 
 dependencies = []
 
@@ -37,9 +37,6 @@ Repository = "https://github.com/zuspec/zuspec-be-sv-simplify"
 [tool.setuptools]
 packages = ["zuspec.be.sv"]
 package-dir = {"" = "src"}
-
-[tool.setuptools_scm]
-write_to = "src/zuspec/be/sv/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
