@@ -15,7 +15,6 @@ package:
     deps:
     - name: zuspec-dataclasses
       url: https://github.com/zuspec/zuspec-dataclasses.git
-      branch: mballance/refactor
     - name: zuspec-fe-py
       url: https://github.com/zuspec/zuspec-fe-py.git
     - name: pytest
