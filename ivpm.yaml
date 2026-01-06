@@ -15,23 +15,28 @@ package:
     deps:
     - name: zuspec-dataclasses
       url: https://github.com/zuspec/zuspec-dataclasses.git
-    - name: zuspec-fe-py
-      url: https://github.com/zuspec/zuspec-fe-py.git
+      branch: mballance/simplify
+    - name: zuspec-be-sw
+      url: https://github.com/zuspec/zuspec-be-sw.git
+      branch: mballance/simplify
     - name: pytest
       src: pypi
+    - name: pyhdl-if
+      url: https://github.com/fvutils/pyhdl-if.git
+    - name: pytest-dfm
+      url: https://github.com/dv-flow/pytest-dfm.git
+    - name: gemini-riscv
+      url: https://github.com/hongping/gemini-riscv.git
+      cache: true
     - name: Sphinx
       src: pypi
     - name: sphinx-argparse
       src: pypi
     - name: sphinxcontrib-makedomain
       src: pypi
-    - name: sphinxcontrib-openapi
-      src: pypi
     - name: sphinxcontrib-spelling
       src: pypi
     - name: sphinx-rtd-theme
-      src: pypi
-    - name: sphinx-jsonschema
       src: pypi
 
 

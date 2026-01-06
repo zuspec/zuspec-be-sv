@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zuspec-be-sv"
+version = "0.0.1"
+description = "Zuspec SystemVerilog backend"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Matthew Ballance", email = "matt.ballance@gmail.com"}
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-dfm",
+    "zuspec-dataclasses",
+    "zuspec-be-sw",
+    "pyhdl-if",
+    "gemini-riscv",
+    "Sphinx",
+    "sphinx-argparse",
+    "sphinxcontrib-makedomain",
+    "sphinxcontrib-spelling",
+    "sphinx-rtd-theme",
+]
+
+[project.urls]
+Homepage = "https://github.com/zuspec/zuspec-be-sv-simplify"
+Repository = "https://github.com/zuspec/zuspec-be-sv-simplify"
+
+[tool.setuptools]
+packages = ["zuspec.be.sv"]
+package-dir = {"" = "src"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-ra --strict-markers --strict-config --showlocals"
+markers = [
+    "unit: Unit tests",
+    "performance: Performance tests",
+    "slow: Tests that take a long time to run",
+    "integration: Integration tests",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py37']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
