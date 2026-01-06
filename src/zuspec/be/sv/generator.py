@@ -22,10 +22,11 @@ from zuspec.dataclasses import ir
 class SVGenerator:
     """Main SystemVerilog code generator from datamodel."""
 
-    def __init__(self, output_dir: Path):
+    def __init__(self, output_dir: Path, debug_annotations: bool = False):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._ctxt: ir.Context = None
+        self.debug_annotations = debug_annotations
 
     def _sanitize_sv_name(self, name: str) -> str:
         """Sanitize a name to be a valid SystemVerilog identifier.
@@ -89,6 +90,11 @@ class SVGenerator:
     def _generate_component(self, comp: ir.DataTypeComponent) -> str:
         """Generate SystemVerilog code for a component."""
         all_code = []
+        
+        # Add source file header comment if debug mode is enabled
+        if self.debug_annotations and comp.loc:
+            all_code.append(f"// Generated from: {comp.loc.file}:{comp.loc.line}")
+            all_code.append("")
         
         # First, generate interfaces for any export fields
         export_interfaces = self._generate_export_interfaces(comp)
@@ -681,6 +687,10 @@ class SVGenerator:
     def _generate_sync_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
         """Generate SystemVerilog always block from sync process."""
         lines = []
+        
+        # Add source location annotation if debug mode is enabled
+        if self.debug_annotations and func.loc:
+            lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
         
         # Extract clock and reset from metadata
         clock_name = None
@@ -1305,6 +1315,10 @@ class SVGenerator:
     def _generate_interface_task(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
         """Generate a SystemVerilog task for an interface method."""
         lines = []
+        
+        # Add source location annotation if debug mode is enabled
+        if self.debug_annotations and func.loc:
+            lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
         
         # Task signature
         params = []
