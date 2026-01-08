@@ -15,7 +15,7 @@
 #****************************************************************************
 """SystemVerilog code generator for transforming datamodel to SystemVerilog."""
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from zuspec.dataclasses import ir
 
 
@@ -45,6 +45,69 @@ class SVGenerator:
         if name and name[0].isdigit():
             name = '_' + name
         return name
+
+    def _resolve_bundle_type(self, field: ir.Field, comp: ir.DataTypeComponent) -> Optional[ir.DataTypeStruct]:
+        """Resolve a bundle field to its struct type definition.
+        
+        Tries to resolve from:
+        1. Context type map (if bundle type was explicitly included)
+        2. Component's Python module (lookup by ref_name)
+        
+        Returns None if not a bundle or can't be resolved.
+        """
+        if not isinstance(field.datatype, ir.DataTypeRef):
+            return None
+        
+        # Try to get from context first
+        ref_type = self._ctxt.type_m.get(field.datatype.ref_name)
+        if isinstance(ref_type, ir.DataTypeStruct):
+            return ref_type
+        
+        # Fallback: Try to find the bundle class and build its IR
+        bundle_class = None
+        
+        # Try to get from component's module
+        if comp.py_type:
+            try:
+                import importlib
+                comp_module = importlib.import_module(comp.py_type.__module__)
+                # Look for the bundle class in the module
+                if hasattr(comp_module, field.datatype.ref_name):
+                    bundle_class = getattr(comp_module, field.datatype.ref_name)
+            except Exception:
+                pass
+        
+        # If not found in component module, try importing from known protocol packages
+        if not bundle_class:
+            try:
+                # Try common protocol packages
+                for pkg in ['org.featherweight_ip.protocol.core.wishbone',
+                           'org.featherweight_ip.protocol.core.axi']:
+                    try:
+                        import importlib
+                        mod = importlib.import_module(pkg)
+                        if hasattr(mod, field.datatype.ref_name):
+                            bundle_class = getattr(mod, field.datatype.ref_name)
+                            break
+                    except ImportError:
+                        continue
+            except Exception:
+                pass
+        
+        # If we found the bundle class, build its IR
+        if bundle_class:
+            try:
+                import zuspec.dataclasses as zdc
+                factory = zdc.DataModelFactory()
+                bundle_ctxt = factory.build(bundle_class)
+                # Look for the struct type in the built context
+                for name, dtype in bundle_ctxt.type_m.items():
+                    if isinstance(dtype, ir.DataTypeStruct):
+                        return dtype
+            except Exception:
+                pass
+        
+        return None
 
     def _get_flattened_bundle_fields(self, bundle_field_name: str, bundle_type: ir.DataType) -> List[tuple]:
         """Get flattened field declarations for a bundle.
@@ -87,6 +150,111 @@ class SVGenerator:
         
         return files
 
+    def _create_binding_map(self, comp: ir.DataTypeComponent) -> Dict[str, str]:
+        """Create a map from expression names to binding signal names.
+        
+        For each binding pair, both sides map to the same internal signal.
+        
+        Returns dict: {expr_name -> binding_signal_name}
+        """
+        binding_map = {}
+        
+        for b in comp.bind_map:
+            # Get the canonical signal name (from LHS)
+            signal_name = self._generate_expr(b.lhs, comp)
+            if signal_name.startswith("/*"):
+                continue
+            
+            # Map both sides to this signal
+            lhs_name = self._generate_expr(b.lhs, comp)
+            rhs_name = self._generate_expr(b.rhs, comp)
+            
+            if not lhs_name.startswith("/*"):
+                binding_map[lhs_name] = signal_name
+            if not rhs_name.startswith("/*"):
+                binding_map[rhs_name] = signal_name
+        
+        return binding_map
+    
+    def _collect_binding_signals(self, comp: ir.DataTypeComponent) -> Dict[str, ir.DataType]:
+        """Collect all unique signals referenced in bindings.
+        
+        For each binding, we only need ONE signal (the connection point).
+        We use the "simpler" side as the signal name.
+        
+        Returns a dict mapping signal name to datatype.
+        """
+        signals = {}
+        
+        for b in comp.bind_map:
+            # Get signal names from both sides
+            lhs_name = self._generate_expr(b.lhs, comp)
+            rhs_name = self._generate_expr(b.rhs, comp)
+            
+            # Skip unknown expressions
+            if lhs_name.startswith("/*") or rhs_name.startswith("/*"):
+                continue
+            
+            # Use the first side as the canonical signal name
+            # (We'll connect both sides to this signal)
+            signal_name = lhs_name
+            
+            # Try to infer the datatype from either side
+            datatype = self._infer_binding_signal_type(b.lhs, comp)
+            if not datatype:
+                datatype = self._infer_binding_signal_type(b.rhs, comp)
+            
+            if signal_name not in signals and datatype:
+                signals[signal_name] = datatype
+        
+        return signals
+    
+    def _infer_binding_signal_type(self, expr: ir.Expr, comp: ir.DataTypeComponent) -> Optional[ir.DataType]:
+        """Infer the datatype of a binding signal expression."""
+        if isinstance(expr, ir.ExprRefField):
+            # Nested reference: self.instance.port
+            if isinstance(expr.base, ir.ExprRefField) and isinstance(expr.base.base, ir.TypeExprRefSelf):
+                inst_idx = expr.base.index
+                port_idx = expr.index
+                if inst_idx < len(comp.fields):
+                    inst_field = comp.fields[inst_idx]
+                    if isinstance(inst_field.datatype, ir.DataTypeRef):
+                        inst_type = self._ctxt.type_m.get(inst_field.datatype.ref_name)
+                        if inst_type and hasattr(inst_type, 'fields') and port_idx < len(inst_type.fields):
+                            return inst_type.fields[port_idx].datatype
+        
+        elif isinstance(expr, ir.ExprRefPy):
+            # Python reference to extern port: self.instance.attr
+            if isinstance(expr.base, ir.ExprRefField) and isinstance(expr.base.base, ir.TypeExprRefSelf):
+                inst_idx = expr.base.index
+                if inst_idx < len(comp.fields):
+                    inst_field = comp.fields[inst_idx]
+                    if isinstance(inst_field.datatype, ir.DataTypeRef):
+                        inst_type = self._ctxt.type_m.get(inst_field.datatype.ref_name)
+                        # For extern types, try to infer from Python type
+                        if isinstance(inst_type, ir.DataTypeExtern) and inst_type.py_type:
+                            # Get the Python field definition
+                            if hasattr(inst_type.py_type, '__dataclass_fields__'):
+                                py_field = inst_type.py_type.__dataclass_fields__.get(expr.ref)
+                                if py_field and py_field.metadata:
+                                    # Try to get width from metadata
+                                    width_meta = py_field.metadata.get('width')
+                                    if width_meta:
+                                        # Common types
+                                        if width_meta == 8:
+                                            return ir.DataTypeInt(bits=8)
+                                        elif width_meta == 32:
+                                            return ir.DataTypeInt(bits=32)
+                                    # Check field name for common patterns
+                                    field_name = expr.ref
+                                    if 'clk' in field_name or 'rst' in field_name or 'enable' in field_name:
+                                        return ir.DataTypeInt(bits=1)
+                                    elif 'count' in field_name:
+                                        return ir.DataTypeInt(bits=8)
+        
+        # Default fallback
+        return ir.DataTypeInt(bits=1)
+    
     def _generate_component(self, comp: ir.DataTypeComponent) -> str:
         """Generate SystemVerilog code for a component."""
         all_code = []
@@ -157,28 +325,30 @@ class SVGenerator:
                     port_type = self._get_sv_type(field.datatype)
                 ports.append(f"  {port_dir} {port_type} {field.name}")
             elif isinstance(field.datatype, ir.DataTypeRef) and field.kind != ir.FieldKind.Export:
-                # Expose bundles as flattened ports for external connections
-                ref_type = self._ctxt.type_m.get(field.datatype.ref_name)
-                if isinstance(ref_type, ir.DataTypeStruct):
-                    # This is a bundle - expose as flattened ports with proper directions
-                    # Get the struct type to determine field directions
-                    for struct_field in ref_type.fields:
-                        if isinstance(struct_field, ir.FieldInOut):
-                            # Use the direction from the struct definition
-                            port_dir = "output" if struct_field.is_out else "input"
-                            flat_name = f"{field.name}_{struct_field.name}"
-                            # Handle parameterized widths in bundle fields
-                            if struct_field.width_expr and hasattr(struct_field.width_expr, 'callable'):
-                                width_expr = self._eval_width_lambda_to_sv(struct_field.width_expr.callable, ref_type)
-                                if width_expr == "1":
+                # Expose bundles as flattened ports for external connections (only if no exports)
+                ref_type = self._resolve_bundle_type(field, comp)
+                if ref_type:
+                    # If component has exports (XtorComponent), bundles are internal, not ports
+                    if not has_exports:
+                        # This is a bundle - expose as flattened ports with proper directions
+                        # Get the struct type to determine field directions
+                        for struct_field in ref_type.fields:
+                            if isinstance(struct_field, ir.FieldInOut):
+                                # Use the direction from the struct definition
+                                port_dir = "output" if struct_field.is_out else "input"
+                                flat_name = f"{field.name}_{struct_field.name}"
+                                # Handle parameterized widths in bundle fields
+                                if struct_field.width_expr and hasattr(struct_field.width_expr, 'callable'):
+                                    width_expr = self._eval_width_lambda_to_sv(struct_field.width_expr.callable, ref_type)
+                                    if width_expr == "1":
+                                        type_str = "logic"
+                                    else:
+                                        type_str = f"logic [({width_expr}-1):0]"
+                                elif struct_field.datatype.bits == 1 or struct_field.datatype.bits == -1:
                                     type_str = "logic"
                                 else:
-                                    type_str = f"logic [({width_expr}-1):0]"
-                            elif struct_field.datatype.bits == 1 or struct_field.datatype.bits == -1:
-                                type_str = "logic"
-                            else:
-                                type_str = f"logic [{struct_field.datatype.bits-1}:0]"
-                            ports.append(f"  {port_dir} {type_str} {flat_name}")
+                                    type_str = f"logic [{struct_field.datatype.bits-1}:0]"
+                                ports.append(f"  {port_dir} {type_str} {flat_name}")
         
         lines.append(",\n".join(ports))
         lines.append(");")
@@ -194,11 +364,29 @@ class SVGenerator:
             # Skip export fields - they become interface instances
             if field.kind == ir.FieldKind.Export:
                 continue
-            # For bundles: skip internal declaration since they're now ports
+            # Handle bundle fields
             if isinstance(field.datatype, ir.DataTypeRef):
-                ref_type = self._ctxt.type_m.get(field.datatype.ref_name)
-                if isinstance(ref_type, ir.DataTypeStruct):
-                    # This is a bundle - it's already exposed as ports, skip internal declaration
+                ref_type = self._resolve_bundle_type(field, comp)
+                if ref_type:
+                    # This is a bundle - if component has exports, declare as internal signals
+                    if has_exports:
+                        # Flatten bundle fields into individual signal declarations
+                        for struct_field in ref_type.fields:
+                            if isinstance(struct_field, ir.FieldInOut):
+                                flat_name = f"{field.name}_{struct_field.name}"
+                                # Handle parameterized widths in bundle fields
+                                if struct_field.width_expr and hasattr(struct_field.width_expr, 'callable'):
+                                    width_expr = self._eval_width_lambda_to_sv(struct_field.width_expr.callable, ref_type)
+                                    if width_expr == "1":
+                                        type_str = "logic"
+                                    else:
+                                        type_str = f"logic [({width_expr}-1):0]"
+                                elif struct_field.datatype.bits == 1 or struct_field.datatype.bits == -1:
+                                    type_str = "logic"
+                                else:
+                                    type_str = f"logic [{struct_field.datatype.bits-1}:0]"
+                                lines.append(f"  {type_str} {flat_name};")
+                    # Skip further processing - either declared as internal or as ports
                     continue
                 # Non-bundle DataTypeRef (component instances) - skip
                 continue
@@ -216,6 +404,16 @@ class SVGenerator:
                 lines.append(f"  {type_str} {field.name};")
         if any((not isinstance(f, ir.FieldInOut) and (isinstance(f.datatype, ir.DataTypeInt) or type(f.datatype) == ir.DataType) and f.kind != ir.FieldKind.Export) for f in comp.fields):
             lines.append("")
+        
+        # Declare internal signals for bindings
+        if comp.bind_map:
+            binding_signals = self._collect_binding_signals(comp)
+            if binding_signals:
+                lines.append("  // Internal signals for bindings")
+                for sig_name, sig_type in sorted(binding_signals.items()):
+                    type_str = self._get_sv_type(sig_type)
+                    lines.append(f"  {type_str} {sig_name};")
+                lines.append("")
 
         # Instantiate components (inst() fields)
         lines.extend(self._generate_component_instances(comp))
@@ -230,6 +428,19 @@ class SVGenerator:
         # Generate sync processes (always blocks)
         for func in comp.sync_processes:
             lines.extend(self._generate_sync_process(func, comp))
+        
+        # Generate async processes (initial blocks for @process methods)
+        # Filter for async functions that aren't already in sync_processes
+        async_funcs = []
+        for f in comp.functions:
+            # Check if function has is_async attribute and is async
+            if hasattr(f, 'is_async') and f.is_async and f.name.startswith('_'):
+                # Make sure it's not already in sync_processes
+                if f not in comp.sync_processes:
+                    async_funcs.append(f)
+        
+        for func in async_funcs:
+            lines.extend(self._generate_async_process(func, comp))
         
         # Add initial block to initialize internal signals written by tasks (for simulation)
         # Skip signals that will be driven by interface continuous assigns
@@ -549,21 +760,38 @@ class SVGenerator:
             port_conn: Dict[str, str] = {}
 
             def match_subport(expr) -> Any:
-                if not isinstance(expr, ir.ExprRefField):
-                    return None
-                if not isinstance(expr.base, ir.ExprRefField):
-                    return None
-                if not isinstance(expr.base.base, ir.TypeExprRefSelf):
-                    return None
-                inst_idx = expr.base.index
-                port_idx = expr.index
-                if inst_idx >= len(comp.fields):
-                    return None
-                if comp.fields[inst_idx].name != inst_name:
-                    return None
-                if port_idx >= len(ref_t.fields):
-                    return None
-                return ref_t.fields[port_idx].name
+                """Match expressions referencing this instance's ports."""
+                # Handle ExprRefField (regular ports)
+                if isinstance(expr, ir.ExprRefField):
+                    if not isinstance(expr.base, ir.ExprRefField):
+                        return None
+                    if not isinstance(expr.base.base, ir.TypeExprRefSelf):
+                        return None
+                    inst_idx = expr.base.index
+                    port_idx = expr.index
+                    if inst_idx >= len(comp.fields):
+                        return None
+                    if comp.fields[inst_idx].name != inst_name:
+                        return None
+                    if port_idx >= len(ref_t.fields):
+                        return None
+                    return ref_t.fields[port_idx].name
+                
+                # Handle ExprRefPy (extern ports)
+                elif isinstance(expr, ir.ExprRefPy):
+                    if not isinstance(expr.base, ir.ExprRefField):
+                        return None
+                    if not isinstance(expr.base.base, ir.TypeExprRefSelf):
+                        return None
+                    inst_idx = expr.base.index
+                    if inst_idx >= len(comp.fields):
+                        return None
+                    if comp.fields[inst_idx].name != inst_name:
+                        return None
+                    # For ExprRefPy, the port name is in expr.ref
+                    return expr.ref
+                
+                return None
 
             for b in comp.bind_map:
                 lhs_p = match_subport(b.lhs)
@@ -722,6 +950,118 @@ class SVGenerator:
         
         return lines
 
+    def _generate_async_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
+        """Generate SystemVerilog initial block from async process (@process).
+        
+        Converts async/await statements to SystemVerilog timing controls.
+        """
+        lines = []
+        
+        # Add source location annotation if debug mode is enabled
+        if self.debug_annotations and func.loc:
+            lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
+        
+        lines.append("  initial begin")
+        
+        # Generate body, converting async/await to SV
+        for stmt in func.body:
+            lines.extend(self._generate_async_stmt(stmt, comp, indent=2))
+        
+        lines.append("  end")
+        lines.append("")
+        
+        return lines
+    
+    def _generate_async_stmt(self, stmt: ir.Stmt, comp: ir.DataTypeComponent, indent: int = 0) -> List[str]:
+        """Generate SystemVerilog statement from async process, handling await."""
+        ind = "  " * indent
+        lines = []
+        
+        if isinstance(stmt, ir.StmtExpr):
+            # Check if this is an await statement
+            if isinstance(stmt.expr, ir.ExprAwait):
+                # await statement - convert to delay
+                await_expr = stmt.expr.value
+                if isinstance(await_expr, ir.ExprCall):
+                    # Check if it's a wait call
+                    if hasattr(await_expr, 'func') and isinstance(await_expr.func, ir.ExprAttribute):
+                        if await_expr.func.attr == 'wait' and len(await_expr.args) > 0:
+                            # Extract time value
+                            time_arg = await_expr.args[0]
+                            time_val = self._extract_time_value(time_arg)
+                            if time_val:
+                                lines.append(f"{ind}#{time_val};")
+                            else:
+                                lines.append(f"{ind}// TODO: await {await_expr}")
+                        elif await_expr.func.attr == 'posedge':
+                            # await posedge(signal)
+                            signal_expr = self._generate_expr(await_expr.args[0], comp)
+                            lines.append(f"{ind}@(posedge {signal_expr});")
+                    else:
+                        lines.append(f"{ind}// TODO: await {await_expr}")
+            else:
+                # Regular expression statement
+                lines.extend(self._generate_stmt(stmt, comp, indent))
+        
+        elif isinstance(stmt, ir.StmtFor):
+            # For loop
+            # Extract iterator info
+            target = stmt.target
+            iter_expr = stmt.iter
+            
+            # Try to determine range
+            if isinstance(iter_expr, ir.ExprCall):
+                if hasattr(iter_expr, 'func') and isinstance(iter_expr.func, ir.ExprRefBuiltin):
+                    if iter_expr.func.name == 'range':
+                        # Handle range(n) loop
+                        if len(iter_expr.args) == 1:
+                            end_val = self._generate_expr(iter_expr.args[0], comp)
+                            target_name = target.name if isinstance(target, ir.ExprRefLocal) else "i"
+                            lines.append(f"{ind}for (int {target_name} = 0; {target_name} < {end_val}; {target_name}++) begin")
+                        elif len(iter_expr.args) == 2:
+                            start_val = self._generate_expr(iter_expr.args[0], comp)
+                            end_val = self._generate_expr(iter_expr.args[1], comp)
+                            target_name = target.name if isinstance(target, ir.ExprRefLocal) else "i"
+                            lines.append(f"{ind}for (int {target_name} = {start_val}; {target_name} < {end_val}; {target_name}++) begin")
+                        
+                        # Generate loop body
+                        for s in stmt.body:
+                            lines.extend(self._generate_async_stmt(s, comp, indent + 1))
+                        
+                        lines.append(f"{ind}end")
+                    else:
+                        lines.append(f"{ind}// TODO: for loop over {iter_expr}")
+        
+        elif isinstance(stmt, ir.StmtAssign):
+            # Regular assignment
+            for target in stmt.targets:
+                target_expr = self._generate_expr(target, comp)
+                value_expr = self._generate_expr(stmt.value, comp)
+                lines.append(f"{ind}{target_expr} = {value_expr};")
+        
+        else:
+            # Fall back to regular statement generation
+            lines.extend(self._generate_stmt(stmt, comp, indent))
+        
+        return lines
+    
+    def _extract_time_value(self, expr: ir.Expr) -> Optional[str]:
+        """Extract time value from Time.ns(N) or similar expressions.
+        
+        Returns: String like "10ns" or None if can't extract
+        """
+        if isinstance(expr, ir.ExprCall):
+            if hasattr(expr, 'func') and isinstance(expr.func, ir.ExprAttribute):
+                # Time.ns(10) -> func.attr == 'ns'
+                if expr.func.attr in ['ns', 'us', 'ms', 'ps']:
+                    if len(expr.args) > 0:
+                        val_expr = expr.args[0]
+                        if isinstance(val_expr, ir.ExprConstant):
+                            return f"{val_expr.value}{expr.func.attr}"
+        
+        return None
+
+
     def _generate_stmt(self, stmt: ir.Stmt, comp: ir.DataTypeComponent, indent: int = 0) -> List[str]:
         """Generate SystemVerilog statement."""
         ind = "  " * indent
@@ -774,9 +1114,40 @@ class SVGenerator:
         """Generate SystemVerilog expression."""
         if isinstance(expr, ir.ExprRefField):
             # Look up field by index
-            if expr.index < len(comp.fields):
-                return comp.fields[expr.index].name
+            if isinstance(expr.base, ir.TypeExprRefSelf):
+                # Direct field reference: self.field
+                if expr.index < len(comp.fields):
+                    return comp.fields[expr.index].name
+                return f"field_{expr.index}"
+            elif isinstance(expr.base, ir.ExprRefField):
+                # Nested field reference: self.instance.field
+                if isinstance(expr.base.base, ir.TypeExprRefSelf):
+                    inst_idx = expr.base.index
+                    port_idx = expr.index
+                    if inst_idx < len(comp.fields):
+                        inst_name = comp.fields[inst_idx].name
+                        # Look up the instance type to get port name
+                        inst_field = comp.fields[inst_idx]
+                        if isinstance(inst_field.datatype, ir.DataTypeRef):
+                            inst_type = self._ctxt.type_m.get(inst_field.datatype.ref_name)
+                            if inst_type and port_idx < len(inst_type.fields):
+                                port_name = inst_type.fields[port_idx].name
+                                # For bindings, we want just the signal name (no prefix)
+                                # The signal will be an internal wire connecting the instances
+                                return f"{inst_name}_{port_name}"
+                return "/* nested field */"
             return f"field_{expr.index}"
+        
+        elif isinstance(expr, ir.ExprRefPy):
+            # Python reference: self.instance.attr
+            if hasattr(expr, 'base') and isinstance(expr.base, ir.ExprRefField):
+                if isinstance(expr.base.base, ir.TypeExprRefSelf):
+                    inst_idx = expr.base.index
+                    if inst_idx < len(comp.fields):
+                        inst_name = comp.fields[inst_idx].name
+                        # expr.ref is the Python attribute name
+                        return f"{inst_name}_{expr.ref}"
+            return "/* unknown py ref */"
         
         elif isinstance(expr, ir.ExprConstant):
             value = expr.value
