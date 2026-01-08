@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Examples &#8212; Zuspec SystemVerilog Backend 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Features" href="features.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">¶</a></h1>
+<p>This page provides complete examples of Zuspec components and their generated SystemVerilog.</p>
+<section id="simple-counter">
+<h2>Simple Counter<a class="headerlink" href="#simple-counter" title="Link to this heading">¶</a></h2>
+<p>A basic up-counter with synchronous reset.</p>
+<section id="zuspec-source">
+<h3>Zuspec Source<a class="headerlink" href="#zuspec-source" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">zuspec.dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">zdc</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Counter</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple up-counter with reset.&quot;&quot;&quot;</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">count</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
+<section id="generated-systemverilog">
+<h3>Generated SystemVerilog<a class="headerlink" href="#generated-systemverilog" title="Link to this heading">¶</a></h3>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Counter</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">reset</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">count</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="parameterized-fifo">
+<h2>Parameterized FIFO<a class="headerlink" href="#parameterized-fifo" title="Link to this heading">¶</a></h2>
+<p>A FIFO with configurable width and depth.</p>
+<section id="id1">
+<h3>Zuspec Source<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FIFO</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parameterized FIFO.&quot;&quot;&quot;</span>
+    <span class="n">DATA_WIDTH</span> <span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">const</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+    <span class="n">DEPTH</span> <span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">const</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+
+    <span class="c1"># Write interface</span>
+    <span class="n">wr_en</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">wr_data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span><span class="p">)</span>
+    <span class="n">full</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="c1"># Read interface</span>
+    <span class="n">rd_en</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">rd_data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span><span class="p">)</span>
+    <span class="n">empty</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="c1"># Internal state</span>
+    <span class="n">wr_ptr</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">bits</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+    <span class="n">rd_ptr</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">bits</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+    <span class="n">count</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">bits</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fifo_ctrl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wr_ptr</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rd_ptr</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">full</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">empty</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Update count</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wr_en</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">full</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rd_en</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">empty</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_en</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">-=</span> <span class="mi">1</span>
+
+            <span class="c1"># Update full/empty flags</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">full</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEPTH</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">empty</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># Update pointers</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wr_en</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">full</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">wr_ptr</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rd_en</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rd_ptr</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>Generated SystemVerilog<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">FIFO</span><span class="w"> </span><span class="p">#(</span>
+<span class="w">  </span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">DATA_WIDTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span>
+<span class="w">  </span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">DEPTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span>
+<span class="p">)(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">reset</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">wr_en</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">wr_data</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">full</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">rd_en</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">rd_data</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">empty</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">7</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">wr_ptr</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">7</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">rd_ptr</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">7</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">count</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">wr_ptr</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">rd_ptr</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">full</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">empty</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="c1">// Counter update logic</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wr_en</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">full</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">rd_en</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">empty</span><span class="p">))</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">          </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">        </span><span class="k">end</span>
+<span class="w">      </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rd_en</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">empty</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">        </span><span class="n">count</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">      </span><span class="k">end</span>
+
+<span class="w">      </span><span class="c1">// Flag updates</span>
+<span class="w">      </span><span class="n">full</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">DEPTH</span><span class="p">);</span>
+<span class="w">      </span><span class="n">empty</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+
+<span class="w">      </span><span class="c1">// Pointer updates</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wr_en</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">full</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">        </span><span class="n">wr_ptr</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">wr_ptr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">      </span><span class="k">end</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rd_en</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">empty</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">        </span><span class="n">rd_ptr</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">rd_ptr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">      </span><span class="k">end</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="state-machine">
+<h2>State Machine<a class="headerlink" href="#state-machine" title="Link to this heading">¶</a></h2>
+<p>A traffic light controller FSM.</p>
+<section id="id3">
+<h3>Zuspec Source<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrafficLight</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Traffic light controller FSM.&quot;&quot;&quot;</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+
+    <span class="n">red</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+    <span class="n">yellow</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+    <span class="n">green</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="n">state</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit8</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">timer</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+
+    <span class="c1"># States</span>
+    <span class="n">STATE_RED</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">STATE_GREEN</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">STATE_YELLOW</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fsm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_RED</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">yellow</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">:</span>
+                <span class="k">case</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_RED</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">yellow</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">&gt;=</span> <span class="mi">100</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_GREEN</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="k">case</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_GREEN</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">yellow</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">&gt;=</span> <span class="mi">80</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_YELLOW</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="k">case</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_YELLOW</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">yellow</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATE_RED</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>Generated SystemVerilog<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">TrafficLight</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">reset</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">red</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">yellow</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">green</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">7</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">state</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">timer</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">timer</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">red</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">      </span><span class="n">yellow</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">green</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">timer</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">timer</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+
+<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+<span class="w">        </span><span class="mi">0</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">  </span><span class="c1">// STATE_RED</span>
+<span class="w">          </span><span class="n">red</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">          </span><span class="n">yellow</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="n">green</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">timer</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">            </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">            </span><span class="n">timer</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="k">end</span>
+<span class="w">        </span><span class="k">end</span>
+
+<span class="w">        </span><span class="mi">1</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">  </span><span class="c1">// STATE_GREEN</span>
+<span class="w">          </span><span class="n">red</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="n">yellow</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="n">green</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">timer</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">80</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">            </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="w">            </span><span class="n">timer</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="k">end</span>
+<span class="w">        </span><span class="k">end</span>
+
+<span class="w">        </span><span class="mi">2</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span><span class="w">  </span><span class="c1">// STATE_YELLOW</span>
+<span class="w">          </span><span class="n">red</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="n">yellow</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">          </span><span class="n">green</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">timer</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">            </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">            </span><span class="n">timer</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">          </span><span class="k">end</span>
+<span class="w">        </span><span class="k">end</span>
+<span class="w">      </span><span class="k">endcase</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="hierarchical-system">
+<h2>Hierarchical System<a class="headerlink" href="#hierarchical-system" title="Link to this heading">¶</a></h2>
+<p>A system with multiple component instances.</p>
+<section id="id5">
+<h3>Zuspec Source<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Adder</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;32-bit adder.&quot;&quot;&quot;</span>
+    <span class="n">a</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">b</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="nb">sum</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Accumulator</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Accumulator using adder.&quot;&quot;&quot;</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">data_in</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">sum_out</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="n">adder</span> <span class="p">:</span> <span class="n">Adder</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+    <span class="n">accum</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__bind__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adder</span><span class="o">.</span><span class="n">a</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">accum</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adder</span><span class="o">.</span><span class="n">b</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_in</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adder</span><span class="o">.</span><span class="n">sum</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_out</span>
+        <span class="p">}</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_accum</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accum</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_out</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>Generated SystemVerilog<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Adder</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="n">sum</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+
+<span class="k">module</span><span class="w"> </span><span class="n">Accumulator</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">reset</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data_in</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum_out</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">accum</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">adder_sum</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">Adder</span><span class="w"> </span><span class="n">adder</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">a</span><span class="p">(</span><span class="n">accum</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">data_in</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">sum</span><span class="p">(</span><span class="n">adder_sum</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">assign</span><span class="w"> </span><span class="n">sum_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adder_sum</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">accum</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="n">accum</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">sum_out</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="export-interface-example">
+<h2>Export Interface Example<a class="headerlink" href="#export-interface-example" title="Link to this heading">¶</a></h2>
+<p>A transactor with export interface.</p>
+<section id="id7">
+<h3>Zuspec Source<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SendIF</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Send interface protocol.&quot;&quot;&quot;</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transactor</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Component with export interface.&quot;&quot;&quot;</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+
+    <span class="n">send_if</span> <span class="p">:</span> <span class="n">SendIF</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">export</span><span class="p">()</span>
+
+    <span class="n">data_out</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+    <span class="n">valid</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__bind__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_if</span><span class="o">.</span><span class="n">send</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_impl</span>
+        <span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send_impl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implementation of send method.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_out</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">posedge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">data</span> <span class="o">*</span> <span class="mi">2</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3>Generated SystemVerilog<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<p>Interface:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">interface</span><span class="w"> </span><span class="n">Transactor_send_if</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="n">valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">task</span><span class="w"> </span><span class="n">send</span><span class="p">(</span>
+<span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data</span><span class="p">,</span>
+<span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">__ret</span><span class="p">);</span>
+
+<span class="w">    </span><span class="p">$</span><span class="n">display</span><span class="p">(</span><span class="s">&quot;%0t: [send] Task started&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">$</span><span class="kt">time</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">;</span>
+<span class="w">    </span><span class="n">valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">);</span>
+<span class="w">    </span><span class="n">valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="n">__ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+
+<span class="w">    </span><span class="p">$</span><span class="n">display</span><span class="p">(</span><span class="s">&quot;%0t: [send] Task completed&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">$</span><span class="kt">time</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">endtask</span>
+
+<span class="k">endinterface</span>
+</pre></div>
+</div>
+<p>Module:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Transactor</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">reset</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data_out</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">valid</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Instantiate interface</span>
+<span class="w">  </span><span class="n">Transactor_send_if</span><span class="w"> </span><span class="n">send_if</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// Connect module signals to interface</span>
+<span class="w">  </span><span class="k">assign</span><span class="w"> </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send_if</span><span class="p">.</span><span class="n">data_out</span><span class="p">;</span>
+<span class="w">  </span><span class="k">assign</span><span class="w"> </span><span class="n">valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send_if</span><span class="p">.</span><span class="n">valid</span><span class="p">;</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h3>
+<p>The interface can be called from a testbench:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">tb</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span><span class="p">,</span><span class="w"> </span><span class="n">reset</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data_out</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="n">valid</span><span class="p">;</span>
+
+<span class="w">  </span><span class="n">Transactor</span><span class="w"> </span><span class="n">dut</span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">clock</span><span class="p">(</span><span class="n">clock</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">reset</span><span class="p">(</span><span class="n">reset</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">data_out</span><span class="p">(</span><span class="n">data_out</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">valid</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">reset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="p">#</span><span class="mi">10</span><span class="n">ns</span><span class="w"> </span><span class="n">reset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Call send through interface</span>
+<span class="w">    </span><span class="n">dut</span><span class="p">.</span><span class="n">send_if</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="mi">42</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">);</span>
+<span class="w">    </span><span class="p">$</span><span class="n">display</span><span class="p">(</span><span class="s">&quot;Result: %d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">);</span><span class="w">  </span><span class="c1">// Should be 84</span>
+
+<span class="w">    </span><span class="p">$</span><span class="n">finish</span><span class="p">;</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Zuspec SystemVerilog Backend</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generator.html">Generator Details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#simple-counter">Simple Counter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameterized-fifo">Parameterized FIFO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#state-machine">State Machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hierarchical-system">Hierarchical System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#export-interface-example">Export Interface Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="features.html" title="previous chapter">Features</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Matthew Ballance.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/examples.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

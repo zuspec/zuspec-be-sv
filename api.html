@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>API Reference &#8212; Zuspec SystemVerilog Backend 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Testing" href="testing.html" />
+    <link rel="prev" title="Examples" href="examples.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h1>
+<p>This page provides the complete API reference for the Zuspec SystemVerilog backend.</p>
+<section id="svgenerator">
+<h2>SVGenerator<a class="headerlink" href="#svgenerator" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="SVGenerator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SVGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug_annotations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SVGenerator" title="Link to this definition">¶</a></dt>
+<dd><p>Main SystemVerilog code generator from datamodel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Directory where generated .sv files will be written</p></li>
+<li><p><strong>debug_annotations</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, includes source location comments</p></li>
+<li><p><strong>default</strong> – False</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Attributes:</strong></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="SVGenerator.output_dir">
+<span class="sig-name descname"><span class="pre">output_dir</span></span><a class="headerlink" href="#SVGenerator.output_dir" title="Link to this definition">¶</a></dt>
+<dd><p>Output directory for generated files (Path).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="SVGenerator.debug_annotations">
+<span class="sig-name descname"><span class="pre">debug_annotations</span></span><a class="headerlink" href="#SVGenerator.debug_annotations" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to include debug source annotations (bool).</p>
+</dd></dl>
+
+<p><strong>Methods:</strong></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="SVGenerator.generate">
+<span class="sig-name descname"><span class="pre">generate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctxt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ir.Context" title="ir.Context"><span class="pre">ir.Context</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Path</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#SVGenerator.generate" title="Link to this definition">¶</a></dt>
+<dd><p>Generate SystemVerilog code for all components in context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ctxt</strong> (<em>zuspec.dataclasses.ir.Context</em>) – IR Context containing components to generate</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of paths to generated .sv files</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a>]</p>
+</dd>
+</dl>
+<p>Iterates through all DataTypeComponent types in the context and generates
+a .sv file for each one. Files are named after the sanitized component name.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="internal-ir-types">
+<h2>Internal IR Types<a class="headerlink" href="#internal-ir-types" title="Link to this heading">¶</a></h2>
+<p>These types from <code class="docutils literal notranslate"><span class="pre">zuspec.dataclasses.ir</span></code> are used by the generator:</p>
+<section id="context">
+<h3>Context<a class="headerlink" href="#context" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.Context">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><a class="headerlink" href="#ir.Context" title="Link to this definition">¶</a></dt>
+<dd><p>Container for all types and components in a model.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">type_m:</span> <span class="pre">Dict[str,</span> <span class="pre">DataType]</span></code> - Map of type names to type definitions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">Dict[str,</span> <span class="pre">Any]</span></code> - Additional context data</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="datatypecomponent">
+<h3>DataTypeComponent<a class="headerlink" href="#datatypecomponent" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataTypeComponent">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeComponent</span></span><a class="headerlink" href="#ir.DataTypeComponent" title="Link to this definition">¶</a></dt>
+<dd><p>Represents a Zuspec Component.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> - Component name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fields:</span> <span class="pre">List[Field]</span></code> - Component fields (ports, instances, internal signals)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">functions:</span> <span class="pre">List[Function]</span></code> - Component methods</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sync_processes:</span> <span class="pre">List[Function]</span></code> - Methods decorated with &#64;sync</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bind_map:</span> <span class="pre">List[Binding]</span></code> - Port/signal bindings</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">py_type:</span> <span class="pre">type</span></code> - Original Python class</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">loc:</span> <span class="pre">Location</span></code> - Source location</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="field-types">
+<h3>Field Types<a class="headerlink" href="#field-types" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.Field">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Field</span></span><a class="headerlink" href="#ir.Field" title="Link to this definition">¶</a></dt>
+<dd><p>Base class for component fields.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> - Field name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">datatype:</span> <span class="pre">DataType</span></code> - Field data type</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_const:</span> <span class="pre">bool</span></code> - Whether field is a const (parameter)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kind:</span> <span class="pre">FieldKind</span></code> - Field kind (normal, export, etc.)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.FieldInOut">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">FieldInOut</span></span><a class="headerlink" href="#ir.FieldInOut" title="Link to this definition">¶</a></dt>
+<dd><p>Field with direction (input/output port).</p>
+<p>Inherits from Field.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">is_out:</span> <span class="pre">bool</span></code> - True for output, False for input</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">width_expr:</span> <span class="pre">Expr</span></code> - Optional width expression (for parameterization)</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="datatype-types">
+<h3>DataType Types<a class="headerlink" href="#datatype-types" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataType</span></span><a class="headerlink" href="#ir.DataType" title="Link to this definition">¶</a></dt>
+<dd><p>Base data type.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataTypeInt">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeInt</span></span><a class="headerlink" href="#ir.DataTypeInt" title="Link to this definition">¶</a></dt>
+<dd><p>Integer type with bit width.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bits:</span> <span class="pre">int</span></code> - Bit width (-1 means inferred)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataTypeRef">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeRef</span></span><a class="headerlink" href="#ir.DataTypeRef" title="Link to this definition">¶</a></dt>
+<dd><p>Reference to another type (component, struct, extern).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ref_name:</span> <span class="pre">str</span></code> - Name of referenced type</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataTypeStruct">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeStruct</span></span><a class="headerlink" href="#ir.DataTypeStruct" title="Link to this definition">¶</a></dt>
+<dd><p>Struct/bundle type.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fields:</span> <span class="pre">List[Field]</span></code> - Struct fields</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.DataTypeExtern">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeExtern</span></span><a class="headerlink" href="#ir.DataTypeExtern" title="Link to this definition">¶</a></dt>
+<dd><p>External component type.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">extern_name:</span> <span class="pre">str</span></code> - External module name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">py_type:</span> <span class="pre">type</span></code> - Python class</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="statement-types">
+<h3>Statement Types<a class="headerlink" href="#statement-types" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.Stmt">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Stmt</span></span><a class="headerlink" href="#ir.Stmt" title="Link to this definition">¶</a></dt>
+<dd><p>Base statement class.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtAssign">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtAssign</span></span><a class="headerlink" href="#ir.StmtAssign" title="Link to this definition">¶</a></dt>
+<dd><p>Assignment statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">targets:</span> <span class="pre">List[Expr]</span></code> - Assignment targets (LHS)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">Expr</span></code> - Assignment value (RHS)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtIf">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtIf</span></span><a class="headerlink" href="#ir.StmtIf" title="Link to this definition">¶</a></dt>
+<dd><p>If/else statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">test:</span> <span class="pre">Expr</span></code> - Condition expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">body:</span> <span class="pre">List[Stmt]</span></code> - If body statements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">orelse:</span> <span class="pre">List[Stmt]</span></code> - Else body statements</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtMatch">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtMatch</span></span><a class="headerlink" href="#ir.StmtMatch" title="Link to this definition">¶</a></dt>
+<dd><p>Match/case statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">subject:</span> <span class="pre">Expr</span></code> - Match subject expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cases:</span> <span class="pre">List[Case]</span></code> - Case clauses</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtWhile">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtWhile</span></span><a class="headerlink" href="#ir.StmtWhile" title="Link to this definition">¶</a></dt>
+<dd><p>While loop statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">test:</span> <span class="pre">Expr</span></code> - Loop condition</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">body:</span> <span class="pre">List[Stmt]</span></code> - Loop body</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtFor">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtFor</span></span><a class="headerlink" href="#ir.StmtFor" title="Link to this definition">¶</a></dt>
+<dd><p>For loop statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">target:</span> <span class="pre">Expr</span></code> - Loop variable</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">iter:</span> <span class="pre">Expr</span></code> - Iteration expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">body:</span> <span class="pre">List[Stmt]</span></code> - Loop body</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.StmtReturn">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtReturn</span></span><a class="headerlink" href="#ir.StmtReturn" title="Link to this definition">¶</a></dt>
+<dd><p>Return statement.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">Expr</span></code> - Return value expression</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="expression-types">
+<h3>Expression Types<a class="headerlink" href="#expression-types" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.Expr">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Expr</span></span><a class="headerlink" href="#ir.Expr" title="Link to this definition">¶</a></dt>
+<dd><p>Base expression class.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprConstant">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprConstant</span></span><a class="headerlink" href="#ir.ExprConstant" title="Link to this definition">¶</a></dt>
+<dd><p>Constant value.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">Any</span></code> - Constant value</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprRefField">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefField</span></span><a class="headerlink" href="#ir.ExprRefField" title="Link to this definition">¶</a></dt>
+<dd><p>Field reference (self.field or self.instance.port).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base:</span> <span class="pre">Expr</span></code> - Base expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">index:</span> <span class="pre">int</span></code> - Field index in component</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprRefPy">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefPy</span></span><a class="headerlink" href="#ir.ExprRefPy" title="Link to this definition">¶</a></dt>
+<dd><p>Python attribute reference.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base:</span> <span class="pre">Expr</span></code> - Base expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ref:</span> <span class="pre">str</span></code> - Attribute name</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprAttribute">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAttribute</span></span><a class="headerlink" href="#ir.ExprAttribute" title="Link to this definition">¶</a></dt>
+<dd><p>Attribute access (bundle.field).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">Expr</span></code> - Object expression</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr:</span> <span class="pre">str</span></code> - Attribute name</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprBin">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBin</span></span><a class="headerlink" href="#ir.ExprBin" title="Link to this definition">¶</a></dt>
+<dd><p>Binary operation.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lhs:</span> <span class="pre">Expr</span></code> - Left operand</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rhs:</span> <span class="pre">Expr</span></code> - Right operand</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">op:</span> <span class="pre">BinOp</span></code> - Binary operator</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprCompare">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprCompare</span></span><a class="headerlink" href="#ir.ExprCompare" title="Link to this definition">¶</a></dt>
+<dd><p>Comparison expression.</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">left:</span> <span class="pre">Expr</span></code> - Left operand</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ops:</span> <span class="pre">List[CmpOp]</span></code> - Comparison operators</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">comparators:</span> <span class="pre">List[Expr]</span></code> - Right operands</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprBool">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBool</span></span><a class="headerlink" href="#ir.ExprBool" title="Link to this definition">¶</a></dt>
+<dd><p>Boolean operation (and, or).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">op:</span> <span class="pre">BoolOp</span></code> - Boolean operator</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">values:</span> <span class="pre">List[Expr]</span></code> - Operands</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprUnary">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprUnary</span></span><a class="headerlink" href="#ir.ExprUnary" title="Link to this definition">¶</a></dt>
+<dd><p>Unary operation (not, ~, -, +).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">op:</span> <span class="pre">UnaryOp</span></code> - Unary operator</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand:</span> <span class="pre">Expr</span></code> - Operand expression</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.ExprAwait">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAwait</span></span><a class="headerlink" href="#ir.ExprAwait" title="Link to this definition">¶</a></dt>
+<dd><p>Await expression (for async processes).</p>
+<p><strong>Attributes:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">value:</span> <span class="pre">Expr</span></code> - Awaited expression</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="operator-enums">
+<h3>Operator Enums<a class="headerlink" href="#operator-enums" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.BinOp">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BinOp</span></span><a class="headerlink" href="#ir.BinOp" title="Link to this definition">¶</a></dt>
+<dd><p>Binary operators:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Add</span></code> - Addition (+)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Sub</span></code> - Subtraction (-)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Mult</span></code> - Multiplication (*)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Div</span></code> - Division (/)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Mod</span></code> - Modulo (%)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LShift</span></code> - Left shift (&lt;&lt;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RShift</span></code> - Right shift (&gt;&gt;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BitOr</span></code> - Bitwise OR (|)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BitXor</span></code> - Bitwise XOR (^)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BitAnd</span></code> - Bitwise AND (&amp;)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.CmpOp">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">CmpOp</span></span><a class="headerlink" href="#ir.CmpOp" title="Link to this definition">¶</a></dt>
+<dd><p>Comparison operators:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Eq</span></code> - Equal (==)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NotEq</span></code> - Not equal (!=)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Lt</span></code> - Less than (&lt;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LtE</span></code> - Less than or equal (&lt;=)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Gt</span></code> - Greater than (&gt;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GtE</span></code> - Greater than or equal (&gt;=)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.BoolOp">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BoolOp</span></span><a class="headerlink" href="#ir.BoolOp" title="Link to this definition">¶</a></dt>
+<dd><p>Boolean operators:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">And</span></code> - Logical AND (&amp;&amp;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Or</span></code> - Logical OR (||)</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ir.UnaryOp">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">UnaryOp</span></span><a class="headerlink" href="#ir.UnaryOp" title="Link to this definition">¶</a></dt>
+<dd><p>Unary operators:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Not</span></code> - Logical NOT (!)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Invert</span></code> - Bitwise NOT (~)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">UAdd</span></code> - Unary plus (+)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">USub</span></code> - Unary minus (-)</p></li>
+</ul>
+</dd></dl>
+
+</section>
+</section>
+<section id="example-usage">
+<h2>Example Usage<a class="headerlink" href="#example-usage" title="Link to this heading">¶</a></h2>
+<section id="basic-generation">
+<h3>Basic Generation<a class="headerlink" href="#basic-generation" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zuspec.dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">zdc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zuspec.be.sv</span><span class="w"> </span><span class="kn">import</span> <span class="n">SVGenerator</span>
+
+<span class="c1"># Define component</span>
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyComp</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+<span class="c1"># Build IR</span>
+<span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+<span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">MyComp</span><span class="p">)</span>
+
+<span class="c1"># Generate SV</span>
+<span class="n">gen</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
+<span class="n">files</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="with-debug-annotations">
+<h3>With Debug Annotations<a class="headerlink" href="#with-debug-annotations" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">gen</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">),</span>
+    <span class="n">debug_annotations</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">files</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="multiple-components">
+<h3>Multiple Components<a class="headerlink" href="#multiple-components" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build context with multiple components</span>
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CompA</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="c1"># ...</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CompB</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="c1"># ...</span>
+
+<span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+<span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">CompA</span><span class="p">)</span>  <span class="c1"># Build from top component</span>
+
+<span class="c1"># Generate all components</span>
+<span class="n">gen</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
+<span class="n">files</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>  <span class="c1"># Generates .sv for CompA and CompB</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Zuspec SystemVerilog Backend</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generator.html">Generator Details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#svgenerator">SVGenerator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-ir-types">Internal IR Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-usage">Example Usage</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="examples.html" title="previous chapter">Examples</a></li>
+      <li>Next: <a href="testing.html" title="next chapter">Testing</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Matthew Ballance.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Generator Details &#8212; Zuspec SystemVerilog Backend 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Features" href="features.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="generator-details">
+<h1>Generator Details<a class="headerlink" href="#generator-details" title="Link to this heading">¶</a></h1>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">SVGenerator</span></code> class is the core component that transforms
+Zuspec IR (Intermediate Representation) into SystemVerilog RTL.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p>The generator performs these key transformations:</p>
+<ol class="arabic simple">
+<li><p><strong>Component → Module</strong>: Zuspec Components become SystemVerilog modules</p></li>
+<li><p><strong>Fields → Ports/Signals</strong>: Input/output fields become ports, internal fields become signals</p></li>
+<li><p><strong>&#64;sync → always</strong>: Clocked processes become always blocks</p></li>
+<li><p><strong>&#64;process → initial</strong>: Async processes become initial blocks</p></li>
+<li><p><strong>Bindings → Connections</strong>: Component bindings become wire connections or port maps</p></li>
+<li><p><strong>Exports → Interfaces</strong>: Export fields become SystemVerilog interfaces with tasks</p></li>
+</ol>
+</section>
+<section id="constructor">
+<h2>Constructor<a class="headerlink" href="#constructor" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">SVGenerator</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">debug_annotations</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">output_dir</span></code>: Directory where generated <code class="docutils literal notranslate"><span class="pre">.sv</span></code> files will be written</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">debug_annotations</span></code>: If True, includes source location comments in generated code</p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zuspec.be.sv</span><span class="w"> </span><span class="kn">import</span> <span class="n">SVGenerator</span>
+
+<span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;rtl_output&quot;</span><span class="p">),</span>
+    <span class="n">debug_annotations</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="main-api">
+<h2>Main API<a class="headerlink" href="#main-api" title="Link to this heading">¶</a></h2>
+<section id="generate">
+<h3>generate()<a class="headerlink" href="#generate" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctxt</span><span class="p">:</span> <span class="n">ir</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate SystemVerilog code for all components in context.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ctxt: IR Context containing components to generate</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of paths to generated .sv files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>This is the main entry point. It:</p>
+<ol class="arabic simple">
+<li><p>Iterates through all components in the context</p></li>
+<li><p>Generates a <code class="docutils literal notranslate"><span class="pre">.sv</span></code> file for each component</p></li>
+<li><p>Returns list of generated file paths</p></li>
+</ol>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">zuspec.dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">zdc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zuspec.be.sv</span><span class="w"> </span><span class="kn">import</span> <span class="n">SVGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyComponent</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="c1"># ... component definition</span>
+
+<span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+<span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">MyComponent</span><span class="p">)</span>
+
+<span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">))</span>
+<span class="n">files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated: </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="internal-methods">
+<h2>Internal Methods<a class="headerlink" href="#internal-methods" title="Link to this heading">¶</a></h2>
+<p>The generator uses several internal methods for different aspects of code generation:</p>
+<section id="component-generation">
+<h3>Component Generation<a class="headerlink" href="#component-generation" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_component()</span></code>: Main component-to-module transformation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_component_instances()</span></code>: Creates module instantiations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_extern_instances()</span></code>: Instantiates external modules</p></li>
+</ul>
+</section>
+<section id="process-generation">
+<h3>Process Generation<a class="headerlink" href="#process-generation" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_sync_process()</span></code>: Converts &#64;sync methods to always blocks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_async_process()</span></code>: Converts &#64;process methods to initial blocks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_stmt()</span></code>: Generates individual statements (if, assign, match)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_expr()</span></code>: Generates expressions (field refs, operators, constants)</p></li>
+</ul>
+</section>
+<section id="interface-generation">
+<h3>Interface Generation<a class="headerlink" href="#interface-generation" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_export_interfaces()</span></code>: Creates SystemVerilog interfaces for exports</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_interface_task()</span></code>: Converts bound methods to interface tasks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_generate_task_body()</span></code>: Generates task body with timing controls</p></li>
+</ul>
+</section>
+<section id="type-conversion">
+<h3>Type Conversion<a class="headerlink" href="#type-conversion" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_type()</span></code>: Converts IR types to SystemVerilog types</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_parameterized_type()</span></code>: Generates parameterized types</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_eval_width_lambda_to_sv()</span></code>: Evaluates width expressions for parameters</p></li>
+</ul>
+</section>
+<section id="name-handling">
+<h3>Name Handling<a class="headerlink" href="#name-handling" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_sanitize_sv_name()</span></code>: Converts Python names to valid SystemVerilog identifiers</p>
+<ul>
+<li><p>Replaces dots with double underscores</p></li>
+<li><p>Handles angle brackets and special characters</p></li>
+<li><p>Example: <code class="docutils literal notranslate"><span class="pre">test_smoke.&lt;locals&gt;.Counter</span></code> → <code class="docutils literal notranslate"><span class="pre">test_smoke__locals__Counter</span></code></p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="bundle-handling">
+<h3>Bundle Handling<a class="headerlink" href="#bundle-handling" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_resolve_bundle_type()</span></code>: Resolves bundle field references to struct types</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_flattened_bundle_fields()</span></code>: Flattens bundle into individual signals</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_infer_bundle_signal_type()</span></code>: Determines signal types for bundle fields</p></li>
+</ul>
+</section>
+<section id="operator-conversion">
+<h3>Operator Conversion<a class="headerlink" href="#operator-conversion" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_binop()</span></code>: Binary operators (+, -, *, /, &lt;&lt;, &gt;&gt;, |, ^, &amp;)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_cmpop()</span></code>: Comparison operators (==, !=, &lt;, &lt;=, &gt;, &gt;=)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_boolop()</span></code>: Boolean operators (&amp;&amp;, ||)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_sv_unaryop()</span></code>: Unary operators (!, ~, +, -)</p></li>
+</ul>
+</section>
+</section>
+<section id="generation-patterns">
+<h2>Generation Patterns<a class="headerlink" href="#generation-patterns" title="Link to this heading">¶</a></h2>
+<section id="module-structure">
+<h3>Module Structure<a class="headerlink" href="#module-structure" title="Link to this heading">¶</a></h3>
+<p>Generated modules follow this pattern:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">ModuleName</span><span class="w"> </span><span class="p">#(</span>
+<span class="w">  </span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">PARAM1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">default_val</span>
+<span class="p">)(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">port1</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="n">WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">port2</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Internal signal declarations</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="n">internal_sig</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Component instantiations</span>
+<span class="w">  </span><span class="n">SubModule</span><span class="w"> </span><span class="n">inst</span><span class="p">(...);</span>
+
+<span class="w">  </span><span class="c1">// Always blocks (from @sync)</span>
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="c1">// Initial blocks (from @process)</span>
+<span class="w">  </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="w">  </span><span class="c1">// Interface instantiations (from exports)</span>
+<span class="w">  </span><span class="n">ModuleName_if</span><span class="w"> </span><span class="n">my_if</span><span class="p">();</span>
+<span class="w">  </span><span class="k">assign</span><span class="w"> </span><span class="n">my_if</span><span class="p">.</span><span class="n">signal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">internal_signal</span><span class="p">;</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="interface-structure">
+<h3>Interface Structure<a class="headerlink" href="#interface-structure" title="Link to this heading">¶</a></h3>
+<p>Generated interfaces for export fields:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">interface</span><span class="w"> </span><span class="n">ModuleName_export_name</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Local signals</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="n">signal1</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">signal2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">  </span><span class="c1">// Tasks for bound methods</span>
+<span class="w">  </span><span class="k">task</span><span class="w"> </span><span class="n">method_name</span><span class="p">(</span>
+<span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">arg1</span><span class="p">,</span>
+<span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">__ret</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Task body with timing controls</span>
+<span class="w">    </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">);</span>
+<span class="w">    </span><span class="n">__ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">signal1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">arg1</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">endtask</span>
+
+<span class="k">endinterface</span>
+</pre></div>
+</div>
+</section>
+<section id="port-connection-patterns">
+<h3>Port Connection Patterns<a class="headerlink" href="#port-connection-patterns" title="Link to this heading">¶</a></h3>
+<p>The generator handles several connection patterns:</p>
+<p><strong>Direct Port Connection</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Zuspec</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_port</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// SystemVerilog</span>
+<span class="n">SubModule</span><span class="w"> </span><span class="n">sub</span><span class="p">(</span>
+<span class="w">  </span><span class="p">.</span><span class="n">port</span><span class="p">(</span><span class="n">my_port</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Bundle Flattening</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Zuspec</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sub</span><span class="o">.</span><span class="n">io</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_io</span><span class="p">)</span>  <span class="c1"># io is a bundle</span>
+</pre></div>
+</div>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// SystemVerilog - flattened</span>
+<span class="n">SubModule</span><span class="w"> </span><span class="n">sub</span><span class="p">(</span>
+<span class="w">  </span><span class="p">.</span><span class="n">io_ready</span><span class="p">(</span><span class="n">my_io_ready</span><span class="p">),</span>
+<span class="w">  </span><span class="p">.</span><span class="n">io_valid</span><span class="p">(</span><span class="n">my_io_valid</span><span class="p">),</span>
+<span class="w">  </span><span class="p">.</span><span class="n">io_data</span><span class="p">(</span><span class="n">my_io_data</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Internal Signal Connection</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Zuspec</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sub1</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub2</span><span class="o">.</span><span class="ow">in</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// SystemVerilog</span>
+<span class="kt">logic</span><span class="w"> </span><span class="n">sub1_out</span><span class="p">;</span><span class="w">  </span><span class="c1">// Internal wire</span>
+
+<span class="n">SubModule1</span><span class="w"> </span><span class="n">sub1</span><span class="p">(.</span><span class="n">out</span><span class="p">(</span><span class="n">sub1_out</span><span class="p">));</span>
+<span class="n">SubModule2</span><span class="w"> </span><span class="n">sub2</span><span class="p">(.</span><span class="n">in</span><span class="p">(</span><span class="n">sub1_out</span><span class="p">));</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="limitations-and-notes">
+<h2>Limitations and Notes<a class="headerlink" href="#limitations-and-notes" title="Link to this heading">¶</a></h2>
+<section id="current-limitations">
+<h3>Current Limitations<a class="headerlink" href="#current-limitations" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>State Machines</strong>: Match/case statements are converted, but FSM optimization is not performed</p></li>
+<li><p><strong>Type Inference</strong>: Some complex expressions may need explicit type hints</p></li>
+<li><p><strong>Bundle Recursion</strong>: Nested bundles are not fully supported</p></li>
+<li><p><strong>Extern Types</strong>: Limited introspection of external component ports</p></li>
+</ol>
+</section>
+<section id="best-practices">
+<h3>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Use Type Annotations</strong>: Explicit types help with correct width inference</p></li>
+<li><p><strong>Keep Bundles Flat</strong>: Avoid deeply nested bundle structures</p></li>
+<li><p><strong>Name Signals Clearly</strong>: Signal names influence type inference</p></li>
+<li><p><strong>Test Generated Code</strong>: Always verify generated SystemVerilog with simulation</p></li>
+<li><p><strong>Enable Debug Mode</strong>: Use <code class="docutils literal notranslate"><span class="pre">debug_annotations=True</span></code> during development</p></li>
+</ol>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Zuspec SystemVerilog Backend</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Generator Details</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#constructor">Constructor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#main-api">Main API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-methods">Internal Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generation-patterns">Generation Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#limitations-and-notes">Limitations and Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="quickstart.html" title="previous chapter">Quickstart</a></li>
+      <li>Next: <a href="features.html" title="next chapter">Features</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Matthew Ballance.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/generator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

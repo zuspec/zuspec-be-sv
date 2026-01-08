@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Testing &#8212; Zuspec SystemVerilog Backend 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contributing" href="contributing.html" />
+    <link rel="prev" title="API Reference" href="api.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="testing">
+<h1>Testing<a class="headerlink" href="#testing" title="Link to this heading">¶</a></h1>
+<p>The Zuspec SystemVerilog backend includes comprehensive tests to ensure correct code generation.</p>
+<section id="test-structure">
+<h2>Test Structure<a class="headerlink" href="#test-structure" title="Link to this heading">¶</a></h2>
+<p>Tests are organized into categories:</p>
+<section id="unit-tests">
+<h3>Unit Tests<a class="headerlink" href="#unit-tests" title="Link to this heading">¶</a></h3>
+<p>Located in <code class="docutils literal notranslate"><span class="pre">tests/unit/</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">test_smoke.py</span></code> - Basic component generation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_xtor_smoke.py</span></code> - Transactor components with interfaces</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_parameterization.py</span></code> - Parameterized components</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_translation.py</span></code> - Statement and expression translation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_sim.py</span></code> - Generated code simulation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_param_simulation.py</span></code> - Parameterized component simulation</p></li>
+</ul>
+</section>
+<section id="performance-tests">
+<h3>Performance Tests<a class="headerlink" href="#performance-tests" title="Link to this heading">¶</a></h3>
+<p>Located in <code class="docutils literal notranslate"><span class="pre">tests/performance/</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">test_backend_comparison.py</span></code> - Compare different backends</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_scaling_analysis.py</span></code> - Analyze generation performance</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_sim_perf.py</span></code> - Simulation performance tests</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_verify_work.py</span></code> - Verify correctness at scale</p></li>
+</ul>
+</section>
+</section>
+<section id="running-tests">
+<h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<section id="all-tests">
+<h3>All Tests<a class="headerlink" href="#all-tests" title="Link to this heading">¶</a></h3>
+<p>Run the complete test suite:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest
+</pre></div>
+</div>
+</section>
+<section id="unit-tests-only">
+<h3>Unit Tests Only<a class="headerlink" href="#unit-tests-only" title="Link to this heading">¶</a></h3>
+<p>Run only unit tests:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>tests/unit/
+</pre></div>
+</div>
+</section>
+<section id="specific-test">
+<h3>Specific Test<a class="headerlink" href="#specific-test" title="Link to this heading">¶</a></h3>
+<p>Run a specific test file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>tests/unit/test_smoke.py
+</pre></div>
+</div>
+<p>Run a specific test function:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>tests/unit/test_smoke.py::test_smoke
+</pre></div>
+</div>
+</section>
+<section id="with-coverage">
+<h3>With Coverage<a class="headerlink" href="#with-coverage" title="Link to this heading">¶</a></h3>
+<p>Generate coverage report:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--cov<span class="o">=</span>zuspec.be.sv<span class="w"> </span>--cov-report<span class="o">=</span>html
+</pre></div>
+</div>
+</section>
+<section id="skip-slow-tests">
+<h3>Skip Slow Tests<a class="headerlink" href="#skip-slow-tests" title="Link to this heading">¶</a></h3>
+<p>Skip performance tests:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not slow&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="test-categories">
+<h2>Test Categories<a class="headerlink" href="#test-categories" title="Link to this heading">¶</a></h2>
+<section id="smoke-tests">
+<h3>Smoke Tests<a class="headerlink" href="#smoke-tests" title="Link to this heading">¶</a></h3>
+<p>Basic sanity checks that generation works:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_smoke</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test basic SystemVerilog generation.&quot;&quot;&quot;</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Counter</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+        <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+        <span class="n">count</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">))</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sv_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="parameterization-tests">
+<h3>Parameterization Tests<a class="headerlink" href="#parameterization-tests" title="Link to this heading">¶</a></h3>
+<p>Test parameterized component generation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_parameterized_width</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test width parameterization.&quot;&quot;&quot;</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">ParamComp</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+        <span class="n">WIDTH</span> <span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">const</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+        <span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">WIDTH</span><span class="p">)</span>
+
+    <span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">ParamComp</span><span class="p">)</span>
+
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">))</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="n">sv_content</span> <span class="o">=</span> <span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="s2">&quot;parameter int WIDTH = 32&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+    <span class="k">assert</span> <span class="s2">&quot;input logic [(WIDTH-1):0] data&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+</pre></div>
+</div>
+</section>
+<section id="simulation-tests">
+<h3>Simulation Tests<a class="headerlink" href="#simulation-tests" title="Link to this heading">¶</a></h3>
+<p>Tests that simulate generated code with a HDL simulator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;sim&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;vlt&quot;</span><span class="p">,</span> <span class="s2">&quot;mti&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_counter_sim</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">sim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test counter in simulation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Generate SystemVerilog</span>
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Counter</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+        <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+        <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+        <span class="n">count</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+        <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">Counter</span><span class="p">)</span>
+
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">))</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="c1"># Build and run simulation</span>
+    <span class="c1"># ... simulation setup code ...</span>
+
+    <span class="c1"># Verify results</span>
+    <span class="k">assert</span> <span class="n">simulation_passed</span>
+</pre></div>
+</div>
+</section>
+<section id="translation-tests">
+<h3>Translation Tests<a class="headerlink" href="#translation-tests" title="Link to this heading">¶</a></h3>
+<p>Test specific statement and expression translations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_match_statement</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test match/case translation.&quot;&quot;&quot;</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">FSM</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+        <span class="n">state</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit8</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+        <span class="n">output</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+        <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_fsm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">:</span>
+                <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">FSM</span><span class="p">)</span>
+
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">))</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="n">sv_content</span> <span class="o">=</span> <span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="s2">&quot;case (state)&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+    <span class="k">assert</span> <span class="s2">&quot;0: begin&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+    <span class="k">assert</span> <span class="s2">&quot;1: begin&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="writing-tests">
+<h2>Writing Tests<a class="headerlink" href="#writing-tests" title="Link to this heading">¶</a></h2>
+<section id="test-template">
+<h3>Test Template<a class="headerlink" href="#test-template" title="Link to this heading">¶</a></h3>
+<p>Use this template for new tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">zuspec.dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">zdc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zuspec.be.sv</span><span class="w"> </span><span class="kn">import</span> <span class="n">SVGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_my_feature</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test description.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Define component</span>
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">MyComponent</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+        <span class="c1"># ... component definition</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Build IR</span>
+    <span class="n">factory</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">DataModelFactory</span><span class="p">()</span>
+    <span class="n">ctxt</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">MyComponent</span><span class="p">)</span>
+
+    <span class="c1"># Generate SV</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span>
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="c1"># Verify generation</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sv_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+
+    <span class="c1"># Check generated content</span>
+    <span class="n">sv_content</span> <span class="o">=</span> <span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="s2">&quot;expected_pattern&quot;</span> <span class="ow">in</span> <span class="n">sv_content</span>
+</pre></div>
+</div>
+</section>
+<section id="simulation-test-template">
+<h3>Simulation Test Template<a class="headerlink" href="#simulation-test-template" title="Link to this heading">¶</a></h3>
+<p>For tests that simulate generated code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dv_flow.mgr</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskListenerLog</span><span class="p">,</span> <span class="n">TaskSetRunner</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;sim&quot;</span><span class="p">,</span> <span class="n">get_available_sims</span><span class="p">())</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_my_sim</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">sim</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test with simulation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Generate SystemVerilog</span>
+    <span class="c1"># ... generation code ...</span>
+
+    <span class="c1"># Create testbench</span>
+    <span class="n">tb_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;tb.sv&quot;</span>
+    <span class="n">tb_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    module tb;</span>
+<span class="s2">        // testbench code</span>
+<span class="s2">    endmodule</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Setup simulation</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dv_flow.mgr.task_graph_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskGraphBuilder</span>
+    <span class="n">builder</span> <span class="o">=</span> <span class="n">TaskGraphBuilder</span><span class="p">()</span>
+    <span class="c1"># ... build simulation tasks ...</span>
+
+    <span class="c1"># Run simulation</span>
+    <span class="n">listener</span> <span class="o">=</span> <span class="n">TaskListenerLog</span><span class="p">()</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">TaskSetRunner</span><span class="p">([</span><span class="n">listener</span><span class="p">])</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">task_set</span><span class="p">)</span>
+
+    <span class="c1"># Verify results</span>
+    <span class="k">assert</span> <span class="n">result</span> <span class="o">==</span> <span class="mi">0</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="test-markers">
+<h2>Test Markers<a class="headerlink" href="#test-markers" title="Link to this heading">¶</a></h2>
+<p>The test suite uses pytest markers to categorize tests:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.unit</span></code> - Unit tests (fast, isolated)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.performance</span></code> - Performance tests</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.slow</span></code> - Tests that take &gt;5 seconds</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.integration</span></code> - Integration tests</p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">slow</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">performance</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_large_hierarchy</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test large component hierarchy.&quot;&quot;&quot;</span>
+    <span class="c1"># ... test code ...</span>
+</pre></div>
+</div>
+<p>Run specific markers:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-m<span class="w"> </span>unit<span class="w">           </span><span class="c1"># Run only unit tests</span>
+pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not slow&quot;</span><span class="w">     </span><span class="c1"># Skip slow tests</span>
+pytest<span class="w"> </span>-m<span class="w"> </span>performance<span class="w">    </span><span class="c1"># Run only performance tests</span>
+</pre></div>
+</div>
+</section>
+<section id="continuous-integration">
+<h2>Continuous Integration<a class="headerlink" href="#continuous-integration" title="Link to this heading">¶</a></h2>
+<p>The test suite runs automatically on:</p>
+<ul class="simple">
+<li><p>Pull requests</p></li>
+<li><p>Push to main branch</p></li>
+<li><p>Manual workflow dispatch</p></li>
+</ul>
+<section id="ci-configuration">
+<h3>CI Configuration<a class="headerlink" href="#ci-configuration" title="Link to this heading">¶</a></h3>
+<p>See <code class="docutils literal notranslate"><span class="pre">.github/workflows/ci.yml</span></code> for CI configuration.</p>
+</section>
+</section>
+<section id="test-requirements">
+<h2>Test Requirements<a class="headerlink" href="#test-requirements" title="Link to this heading">¶</a></h2>
+<section id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading">¶</a></h3>
+<p>Test dependencies are listed in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[project.optional-dependencies]</span>
+<span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;pytest&gt;=6.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;pytest-dfm&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;zuspec-dataclasses&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;zuspec-be-sw&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>Install test dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="simulators">
+<h3>Simulators<a class="headerlink" href="#simulators" title="Link to this heading">¶</a></h3>
+<p>Some tests require HDL simulators:</p>
+<ul class="simple">
+<li><p><strong>Verilator</strong> - Open source Verilog simulator</p></li>
+<li><p><strong>ModelSim/QuestaSim</strong> - Commercial simulator</p></li>
+<li><p><strong>Vivado Simulator (xsim)</strong> - Xilinx simulator</p></li>
+</ul>
+<p>Tests automatically detect available simulators and skip if not found.</p>
+</section>
+</section>
+<section id="debugging-failed-tests">
+<h2>Debugging Failed Tests<a class="headerlink" href="#debugging-failed-tests" title="Link to this heading">¶</a></h2>
+<section id="verbose-output">
+<h3>Verbose Output<a class="headerlink" href="#verbose-output" title="Link to this heading">¶</a></h3>
+<p>Run with verbose output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-v
+</pre></div>
+</div>
+<p>Show print statements:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-s
+</pre></div>
+</div>
+<p>Keep test files:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--keep-tmpdir
+</pre></div>
+</div>
+</section>
+<section id="debug-mode">
+<h3>Debug Mode<a class="headerlink" href="#debug-mode" title="Link to this heading">¶</a></h3>
+<p>Run with Python debugger:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>--pdb
+</pre></div>
+</div>
+<p>Run single test with full output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>tests/unit/test_smoke.py::test_smoke<span class="w"> </span>-vvs
+</pre></div>
+</div>
+</section>
+<section id="inspect-generated-files">
+<h3>Inspect Generated Files<a class="headerlink" href="#inspect-generated-files" title="Link to this heading">¶</a></h3>
+<p>Tests use <code class="docutils literal notranslate"><span class="pre">tmpdir</span></code> fixture for temporary files. To inspect:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_example</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span>
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">sv_files</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ctxt</span><span class="p">)</span>
+
+    <span class="c1"># Print for debugging</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">n=== Generated File: </span><span class="si">{</span><span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> ===&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">sv_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== End ===</span><span class="se">\\</span><span class="s2">n&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then run with <code class="docutils literal notranslate"><span class="pre">-s</span></code> flag to see output.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Zuspec SystemVerilog Backend</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generator.html">Generator Details</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="api.html" title="previous chapter">API Reference</a></li>
+      <li>Next: <a href="contributing.html" title="next chapter">Contributing</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Matthew Ballance.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/testing.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Features &#8212; Zuspec SystemVerilog Backend 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Generator Details" href="generator.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="features">
+<h1>Features<a class="headerlink" href="#features" title="Link to this heading">¶</a></h1>
+<p>This page describes the key features of the Zuspec SystemVerilog backend and how they work.</p>
+<section id="component-translation">
+<h2>Component Translation<a class="headerlink" href="#component-translation" title="Link to this heading">¶</a></h2>
+<section id="basic-components">
+<h3>Basic Components<a class="headerlink" href="#basic-components" title="Link to this heading">¶</a></h3>
+<p>Zuspec Components are translated to SystemVerilog modules with appropriate ports:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Adder</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">a</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">b</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="nb">sum</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Adder</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum</span>
+<span class="p">);</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="parameterization">
+<h2>Parameterization<a class="headerlink" href="#parameterization" title="Link to this heading">¶</a></h2>
+<section id="const-fields-as-parameters">
+<h3>Const Fields as Parameters<a class="headerlink" href="#const-fields-as-parameters" title="Link to this heading">¶</a></h3>
+<p>Const fields in components become module parameters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigurableAdder</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">DATA_WIDTH</span> <span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">const</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span><span class="p">)</span>
+    <span class="n">b</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span><span class="p">)</span>
+    <span class="nb">sum</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">ConfigurableAdder</span><span class="w"> </span><span class="p">#(</span>
+<span class="w">  </span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">DATA_WIDTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span>
+<span class="p">)(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum</span>
+<span class="p">);</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="width-expressions">
+<h3>Width Expressions<a class="headerlink" href="#width-expressions" title="Link to this heading">¶</a></h3>
+<p>Lambda width expressions are converted to SystemVerilog parameter expressions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Zuspec</span>
+<span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span> <span class="o">//</span> <span class="mi">8</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// SystemVerilog</span>
+<span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[(</span><span class="n">DATA_WIDTH</span><span class="o">/</span><span class="mi">8</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data</span>
+</pre></div>
+</div>
+</section>
+<section id="parameter-overrides">
+<h3>Parameter Overrides<a class="headerlink" href="#parameter-overrides" title="Link to this heading">¶</a></h3>
+<p>Instance parameters can be overridden using kwargs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Top</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">DATA_WIDTH</span> <span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">const</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+
+    <span class="n">adder</span> <span class="p">:</span> <span class="n">ConfigurableAdder</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">(</span>
+        <span class="n">kwargs</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">DATA_WIDTH</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">DATA_WIDTH</span> <span class="o">+</span> <span class="mi">4</span><span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Top</span><span class="w"> </span><span class="p">#(</span>
+<span class="w">  </span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">DATA_WIDTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span>
+<span class="p">)(</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="n">ConfigurableAdder</span><span class="w"> </span><span class="p">#(.</span><span class="n">DATA_WIDTH</span><span class="p">(</span><span class="n">DATA_WIDTH</span><span class="o">+</span><span class="mi">4</span><span class="p">))</span><span class="w"> </span><span class="n">adder</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="c1">// port connections</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="clocked-processes">
+<h2>Clocked Processes<a class="headerlink" href="#clocked-processes" title="Link to this heading">¶</a></h2>
+<section id="sync-methods">
+<h3>&#64;sync Methods<a class="headerlink" href="#sync-methods" title="Link to this heading">¶</a></h3>
+<p>Methods decorated with <code class="docutils literal notranslate"><span class="pre">&#64;zdc.sync</span></code> are converted to always blocks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Register</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">reset</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">d</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">q</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_register</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="n">q</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">  </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="n">q</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">self</span><span class="p">.</span><span class="n">d</span><span class="p">;</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+</section>
+<section id="match-statements">
+<h3>Match Statements<a class="headerlink" href="#match-statements" title="Link to this heading">¶</a></h3>
+<p>Python match/case statements are converted to SystemVerilog case statements:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">clock</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span><span class="n">s</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_fsm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">:</span>
+        <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+<span class="w">    </span><span class="mi">0</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="k">output</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">      </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">    </span><span class="mi">1</span><span class="o">:</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">      </span><span class="k">output</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">      </span><span class="n">state</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">end</span>
+<span class="w">  </span><span class="k">endcase</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="async-processes">
+<h2>Async Processes<a class="headerlink" href="#async-processes" title="Link to this heading">¶</a></h2>
+<section id="process-methods">
+<h3>&#64;process Methods<a class="headerlink" href="#process-methods" title="Link to this heading">¶</a></h3>
+<p>Methods decorated with <code class="docutils literal notranslate"><span class="pre">&#64;zdc.process</span></code> become initial blocks for testbench stimulus:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Testbench</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+    <span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="nd">@zdc</span><span class="o">.</span><span class="n">process</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_stimulus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">posedge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<span class="w">    </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">);</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+</section>
+<section id="timing-controls">
+<h3>Timing Controls<a class="headerlink" href="#timing-controls" title="Link to this heading">¶</a></h3>
+<p>Await expressions are converted to SystemVerilog timing controls:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.posedge(signal)</span></code> → <code class="docutils literal notranslate"><span class="pre">&#64;(posedge</span> <span class="pre">signal);</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.wait(Time.ns(10))</span></code> → <code class="docutils literal notranslate"><span class="pre">#10ns;</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="bundle-handling">
+<h2>Bundle Handling<a class="headerlink" href="#bundle-handling" title="Link to this heading">¶</a></h2>
+<section id="automatic-flattening">
+<h3>Automatic Flattening<a class="headerlink" href="#automatic-flattening" title="Link to this heading">¶</a></h3>
+<p>Interface bundles are automatically flattened into individual ports:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ValidReadyBundle</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Struct</span><span class="p">):</span>
+    <span class="n">valid</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">is_out</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">ready</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">is_out</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">is_out</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Consumer</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">io</span> <span class="p">:</span> <span class="n">ValidReadyBundle</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Consumer</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">io_valid</span><span class="p">,</span>
+<span class="w">  </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">io_ready</span><span class="p">,</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">io_data</span>
+<span class="p">);</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="bundle-connections">
+<h3>Bundle Connections<a class="headerlink" href="#bundle-connections" title="Link to this heading">¶</a></h3>
+<p>Bundle-to-bundle connections are expanded into individual signal connections:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">System</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">producer</span> <span class="p">:</span> <span class="n">Producer</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+    <span class="n">consumer</span> <span class="p">:</span> <span class="n">Consumer</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__bind__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">producer</span><span class="o">.</span><span class="n">io</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumer</span><span class="o">.</span><span class="n">io</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">System</span><span class="p">(</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="n">Producer</span><span class="w"> </span><span class="n">producer</span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_valid</span><span class="p">(</span><span class="n">consumer_io_valid</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_ready</span><span class="p">(</span><span class="n">consumer_io_ready</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_data</span><span class="p">(</span><span class="n">consumer_io_data</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">Consumer</span><span class="w"> </span><span class="n">consumer</span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_valid</span><span class="p">(</span><span class="n">consumer_io_valid</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_ready</span><span class="p">(</span><span class="n">consumer_io_ready</span><span class="p">),</span>
+<span class="w">    </span><span class="p">.</span><span class="n">io_data</span><span class="p">(</span><span class="n">consumer_io_data</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="export-interfaces">
+<h2>Export Interfaces<a class="headerlink" href="#export-interfaces" title="Link to this heading">¶</a></h2>
+<section id="interface-generation">
+<h3>Interface Generation<a class="headerlink" href="#interface-generation" title="Link to this heading">¶</a></h3>
+<p>Export fields are converted to SystemVerilog interfaces with tasks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DataIF</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transactor</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">data_if</span> <span class="p">:</span> <span class="n">DataIF</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">export</span><span class="p">()</span>
+    <span class="n">data_out</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__bind__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_if</span><span class="o">.</span><span class="n">send</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send</span>
+        <span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_out</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">posedge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Generates interface:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">interface</span><span class="w"> </span><span class="n">Transactor_data_if</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">task</span><span class="w"> </span><span class="n">send</span><span class="p">(</span>
+<span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">value</span><span class="p">,</span>
+<span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="p">[</span><span class="mi">31</span><span class="o">:</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="n">__ret</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="p">);</span>
+<span class="w">    </span><span class="n">__ret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">endtask</span>
+
+<span class="k">endinterface</span>
+</pre></div>
+</div>
+<p>And module with interface instance:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">Transactor</span><span class="p">(</span>
+<span class="w">  </span><span class="c1">// ports</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Instantiate interface</span>
+<span class="w">  </span><span class="n">Transactor_data_if</span><span class="w"> </span><span class="n">data_if</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// Connect module signals to interface</span>
+<span class="w">  </span><span class="k">assign</span><span class="w"> </span><span class="n">data_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data_if</span><span class="p">.</span><span class="n">data_out</span><span class="p">;</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="instance-hierarchy">
+<h2>Instance Hierarchy<a class="headerlink" href="#instance-hierarchy" title="Link to this heading">¶</a></h2>
+<section id="component-instantiation">
+<h3>Component Instantiation<a class="headerlink" href="#component-instantiation" title="Link to this heading">¶</a></h3>
+<p>Component fields with <code class="docutils literal notranslate"><span class="pre">zdc.inst()</span></code> are instantiated as submodules:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">System</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">clock</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+
+    <span class="n">counter1</span> <span class="p">:</span> <span class="n">Counter</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+    <span class="n">counter2</span> <span class="p">:</span> <span class="n">Counter</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__bind__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter1</span><span class="o">.</span><span class="n">clock</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counter2</span><span class="o">.</span><span class="n">clock</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>Generates:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">System</span><span class="p">(</span>
+<span class="w">  </span><span class="k">input</span><span class="w"> </span><span class="kt">logic</span><span class="w"> </span><span class="n">clock</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="n">Counter</span><span class="w"> </span><span class="n">counter1</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">clock</span><span class="p">(</span><span class="n">clock</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">Counter</span><span class="w"> </span><span class="n">counter2</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="p">.</span><span class="n">clock</span><span class="p">(</span><span class="n">clock</span><span class="p">)</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="external-components">
+<h3>External Components<a class="headerlink" href="#external-components" title="Link to this heading">¶</a></h3>
+<p>External components (<code class="docutils literal notranslate"><span class="pre">zdc.extern()</span></code>) are also instantiated:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RAM</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Extern</span><span class="p">):</span>
+    <span class="n">addr</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">input</span><span class="p">()</span>
+    <span class="n">data</span> <span class="p">:</span> <span class="n">zdc</span><span class="o">.</span><span class="n">bit32</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">output</span><span class="p">()</span>
+
+<span class="nd">@zdc</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">System</span><span class="p">(</span><span class="n">zdc</span><span class="o">.</span><span class="n">Component</span><span class="p">):</span>
+    <span class="n">ram</span> <span class="p">:</span> <span class="n">RAM</span> <span class="o">=</span> <span class="n">zdc</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Generates instantiation with the external module name.</p>
+</section>
+</section>
+<section id="debug-features">
+<h2>Debug Features<a class="headerlink" href="#debug-features" title="Link to this heading">¶</a></h2>
+<section id="source-location-annotations">
+<h3>Source Location Annotations<a class="headerlink" href="#source-location-annotations" title="Link to this heading">¶</a></h3>
+<p>Enable <code class="docutils literal notranslate"><span class="pre">debug_annotations</span></code> to include source file references:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">generator</span> <span class="o">=</span> <span class="n">SVGenerator</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">),</span>
+    <span class="n">debug_annotations</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Generates comments like:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// Generated from: test_smoke.py:15</span>
+<span class="k">module</span><span class="w"> </span><span class="n">Counter</span><span class="p">(</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Source: test_smoke.py:20</span>
+<span class="w">  </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="k">posedge</span><span class="w"> </span><span class="n">reset</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="w">  </span><span class="k">end</span>
+
+<span class="k">endmodule</span>
+</pre></div>
+</div>
+</section>
+<section id="name-sanitization">
+<h3>Name Sanitization<a class="headerlink" href="#name-sanitization" title="Link to this heading">¶</a></h3>
+<p>Python names are sanitized to valid SystemVerilog identifiers:</p>
+<ul class="simple">
+<li><p>Dots (.) → Double underscores (__)</p></li>
+<li><p>Angle brackets (&lt;, &gt;) → Double underscores</p></li>
+<li><p>Invalid characters → Underscores</p></li>
+<li><p>Leading digits → Prefixed with underscore</p></li>
+</ul>
+<p>Example: <code class="docutils literal notranslate"><span class="pre">test_smoke.&lt;locals&gt;.Counter</span></code> → <code class="docutils literal notranslate"><span class="pre">test_smoke__locals__Counter</span></code></p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Zuspec SystemVerilog Backend</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generator.html">Generator Details</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#component-translation">Component Translation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameterization">Parameterization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clocked-processes">Clocked Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#async-processes">Async Processes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bundle-handling">Bundle Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#export-interfaces">Export Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#instance-hierarchy">Instance Hierarchy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#debug-features">Debug Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="generator.html" title="previous chapter">Generator Details</a></li>
+      <li>Next: <a href="examples.html" title="next chapter">Examples</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Matthew Ballance.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/features.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
