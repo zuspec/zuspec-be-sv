@@ -10,8 +10,8 @@
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=d45e8c67"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Testing" href="testing.html" />
@@ -40,7 +40,7 @@
 <h2>SVGenerator<a class="headerlink" href="#svgenerator" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="SVGenerator">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SVGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug_annotations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SVGenerator" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SVGenerator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug_annotations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#SVGenerator" title="Link to this definition">¶</a></dt>
 <dd><p>Main SystemVerilog code generator from datamodel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -94,7 +94,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>Context<a class="headerlink" href="#context" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.Context">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><a class="headerlink" href="#ir.Context" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Context</span></span><a class="headerlink" href="#ir.Context" title="Link to this definition">¶</a></dt>
 <dd><p>Container for all types and components in a model.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -108,7 +108,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>DataTypeComponent<a class="headerlink" href="#datatypecomponent" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataTypeComponent">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeComponent</span></span><a class="headerlink" href="#ir.DataTypeComponent" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeComponent</span></span><a class="headerlink" href="#ir.DataTypeComponent" title="Link to this definition">¶</a></dt>
 <dd><p>Represents a Zuspec Component.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -127,7 +127,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>Field Types<a class="headerlink" href="#field-types" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.Field">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Field</span></span><a class="headerlink" href="#ir.Field" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Field</span></span><a class="headerlink" href="#ir.Field" title="Link to this definition">¶</a></dt>
 <dd><p>Base class for component fields.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -140,7 +140,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.FieldInOut">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">FieldInOut</span></span><a class="headerlink" href="#ir.FieldInOut" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">FieldInOut</span></span><a class="headerlink" href="#ir.FieldInOut" title="Link to this definition">¶</a></dt>
 <dd><p>Field with direction (input/output port).</p>
 <p>Inherits from Field.</p>
 <p><strong>Attributes:</strong></p>
@@ -155,13 +155,13 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>DataType Types<a class="headerlink" href="#datatype-types" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataType">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataType</span></span><a class="headerlink" href="#ir.DataType" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataType</span></span><a class="headerlink" href="#ir.DataType" title="Link to this definition">¶</a></dt>
 <dd><p>Base data type.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataTypeInt">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeInt</span></span><a class="headerlink" href="#ir.DataTypeInt" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeInt</span></span><a class="headerlink" href="#ir.DataTypeInt" title="Link to this definition">¶</a></dt>
 <dd><p>Integer type with bit width.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -171,7 +171,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataTypeRef">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeRef</span></span><a class="headerlink" href="#ir.DataTypeRef" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeRef</span></span><a class="headerlink" href="#ir.DataTypeRef" title="Link to this definition">¶</a></dt>
 <dd><p>Reference to another type (component, struct, extern).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -181,7 +181,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataTypeStruct">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeStruct</span></span><a class="headerlink" href="#ir.DataTypeStruct" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeStruct</span></span><a class="headerlink" href="#ir.DataTypeStruct" title="Link to this definition">¶</a></dt>
 <dd><p>Struct/bundle type.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -191,7 +191,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.DataTypeExtern">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeExtern</span></span><a class="headerlink" href="#ir.DataTypeExtern" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">DataTypeExtern</span></span><a class="headerlink" href="#ir.DataTypeExtern" title="Link to this definition">¶</a></dt>
 <dd><p>External component type.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -205,13 +205,13 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>Statement Types<a class="headerlink" href="#statement-types" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.Stmt">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Stmt</span></span><a class="headerlink" href="#ir.Stmt" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Stmt</span></span><a class="headerlink" href="#ir.Stmt" title="Link to this definition">¶</a></dt>
 <dd><p>Base statement class.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtAssign">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtAssign</span></span><a class="headerlink" href="#ir.StmtAssign" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtAssign</span></span><a class="headerlink" href="#ir.StmtAssign" title="Link to this definition">¶</a></dt>
 <dd><p>Assignment statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -222,7 +222,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtIf">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtIf</span></span><a class="headerlink" href="#ir.StmtIf" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtIf</span></span><a class="headerlink" href="#ir.StmtIf" title="Link to this definition">¶</a></dt>
 <dd><p>If/else statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -234,7 +234,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtMatch">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtMatch</span></span><a class="headerlink" href="#ir.StmtMatch" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtMatch</span></span><a class="headerlink" href="#ir.StmtMatch" title="Link to this definition">¶</a></dt>
 <dd><p>Match/case statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -245,7 +245,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtWhile">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtWhile</span></span><a class="headerlink" href="#ir.StmtWhile" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtWhile</span></span><a class="headerlink" href="#ir.StmtWhile" title="Link to this definition">¶</a></dt>
 <dd><p>While loop statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -256,7 +256,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtFor">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtFor</span></span><a class="headerlink" href="#ir.StmtFor" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtFor</span></span><a class="headerlink" href="#ir.StmtFor" title="Link to this definition">¶</a></dt>
 <dd><p>For loop statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -268,7 +268,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.StmtReturn">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtReturn</span></span><a class="headerlink" href="#ir.StmtReturn" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">StmtReturn</span></span><a class="headerlink" href="#ir.StmtReturn" title="Link to this definition">¶</a></dt>
 <dd><p>Return statement.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -281,13 +281,13 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>Expression Types<a class="headerlink" href="#expression-types" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.Expr">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Expr</span></span><a class="headerlink" href="#ir.Expr" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">Expr</span></span><a class="headerlink" href="#ir.Expr" title="Link to this definition">¶</a></dt>
 <dd><p>Base expression class.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprConstant">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprConstant</span></span><a class="headerlink" href="#ir.ExprConstant" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprConstant</span></span><a class="headerlink" href="#ir.ExprConstant" title="Link to this definition">¶</a></dt>
 <dd><p>Constant value.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -297,7 +297,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprRefField">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefField</span></span><a class="headerlink" href="#ir.ExprRefField" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefField</span></span><a class="headerlink" href="#ir.ExprRefField" title="Link to this definition">¶</a></dt>
 <dd><p>Field reference (self.field or self.instance.port).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -308,7 +308,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprRefPy">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefPy</span></span><a class="headerlink" href="#ir.ExprRefPy" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprRefPy</span></span><a class="headerlink" href="#ir.ExprRefPy" title="Link to this definition">¶</a></dt>
 <dd><p>Python attribute reference.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -319,7 +319,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprAttribute">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAttribute</span></span><a class="headerlink" href="#ir.ExprAttribute" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAttribute</span></span><a class="headerlink" href="#ir.ExprAttribute" title="Link to this definition">¶</a></dt>
 <dd><p>Attribute access (bundle.field).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -330,7 +330,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprBin">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBin</span></span><a class="headerlink" href="#ir.ExprBin" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBin</span></span><a class="headerlink" href="#ir.ExprBin" title="Link to this definition">¶</a></dt>
 <dd><p>Binary operation.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -342,7 +342,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprCompare">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprCompare</span></span><a class="headerlink" href="#ir.ExprCompare" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprCompare</span></span><a class="headerlink" href="#ir.ExprCompare" title="Link to this definition">¶</a></dt>
 <dd><p>Comparison expression.</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -354,7 +354,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprBool">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBool</span></span><a class="headerlink" href="#ir.ExprBool" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprBool</span></span><a class="headerlink" href="#ir.ExprBool" title="Link to this definition">¶</a></dt>
 <dd><p>Boolean operation (and, or).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -365,7 +365,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprUnary">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprUnary</span></span><a class="headerlink" href="#ir.ExprUnary" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprUnary</span></span><a class="headerlink" href="#ir.ExprUnary" title="Link to this definition">¶</a></dt>
 <dd><p>Unary operation (not, ~, -, +).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -376,7 +376,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.ExprAwait">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAwait</span></span><a class="headerlink" href="#ir.ExprAwait" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">ExprAwait</span></span><a class="headerlink" href="#ir.ExprAwait" title="Link to this definition">¶</a></dt>
 <dd><p>Await expression (for async processes).</p>
 <p><strong>Attributes:</strong></p>
 <ul class="simple">
@@ -389,7 +389,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 <h3>Operator Enums<a class="headerlink" href="#operator-enums" title="Link to this heading">¶</a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.BinOp">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BinOp</span></span><a class="headerlink" href="#ir.BinOp" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BinOp</span></span><a class="headerlink" href="#ir.BinOp" title="Link to this definition">¶</a></dt>
 <dd><p>Binary operators:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Add</span></code> - Addition (+)</p></li>
@@ -407,7 +407,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.CmpOp">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">CmpOp</span></span><a class="headerlink" href="#ir.CmpOp" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">CmpOp</span></span><a class="headerlink" href="#ir.CmpOp" title="Link to this definition">¶</a></dt>
 <dd><p>Comparison operators:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Eq</span></code> - Equal (==)</p></li>
@@ -421,7 +421,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.BoolOp">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BoolOp</span></span><a class="headerlink" href="#ir.BoolOp" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">BoolOp</span></span><a class="headerlink" href="#ir.BoolOp" title="Link to this definition">¶</a></dt>
 <dd><p>Boolean operators:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">And</span></code> - Logical AND (&amp;&amp;)</p></li>
@@ -431,7 +431,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="ir.UnaryOp">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">UnaryOp</span></span><a class="headerlink" href="#ir.UnaryOp" title="Link to this definition">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">ir.</span></span><span class="sig-name descname"><span class="pre">UnaryOp</span></span><a class="headerlink" href="#ir.UnaryOp" title="Link to this definition">¶</a></dt>
 <dd><p>Unary operators:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Not</span></code> - Logical NOT (!)</p></li>
@@ -573,7 +573,7 @@ a .sv file for each one. Files are named after the sanitized component name.</p>
       &#169;2025, Matthew Ballance.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |
