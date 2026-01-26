@@ -33,7 +33,7 @@ module tb;
         // Call the transactor interface task
         $display("%0t: Calling dut.xtor_if.send(32'h42)", $time);
         
-        dut.xtor_if.send(result, 32'h42);
+        dut.xtor_if.send(32'h42, result);
         
         $display("%0t: Returned from send, result = 0x%h", $time, result);
         

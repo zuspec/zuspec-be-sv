@@ -23,6 +23,8 @@ package:
       url: https://github.com/fvutils/pyhdl-if.git
     - name: pytest-dfm
       url: https://github.com/dv-flow/pytest-dfm.git
+    - name: dv-flow-libformal
+      url: https://github.com/dv-flow/dv-flow-libformal.git
     - name: gemini-riscv
       url: https://github.com/hongping/gemini-riscv.git
       cache: true

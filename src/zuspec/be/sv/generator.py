@@ -409,11 +409,33 @@ class SVGenerator:
         if comp.bind_map:
             binding_signals = self._collect_binding_signals(comp)
             if binding_signals:
-                lines.append("  // Internal signals for bindings")
-                for sig_name, sig_type in sorted(binding_signals.items()):
-                    type_str = self._get_sv_type(sig_type)
-                    lines.append(f"  {type_str} {sig_name};")
-                lines.append("")
+                # Collect names of signals already declared (ports and internal fields)
+                declared_names = set()
+                for field in comp.fields:
+                    if field.is_const:
+                        continue
+                    # FieldInOut are ports
+                    if isinstance(field, ir.FieldInOut):
+                        declared_names.add(field.name)
+                    elif isinstance(field.datatype, ir.DataTypeRef) and field.kind != ir.FieldKind.Export:
+                        ref_type = self._resolve_bundle_type(field, comp)
+                        if ref_type:
+                            # Bundle/extern fields - flattened names
+                            for struct_field in ref_type.fields:
+                                if isinstance(struct_field, ir.FieldInOut):
+                                    declared_names.add(f"{field.name}_{struct_field.name}")
+                    elif isinstance(field.datatype, ir.DataTypeInt) or type(field.datatype) == ir.DataType:
+                        # Regular internal fields declared above
+                        declared_names.add(field.name)
+                
+                # Filter out signals that are already declared
+                filtered_signals = {k: v for k, v in binding_signals.items() if k not in declared_names}
+                if filtered_signals:
+                    lines.append("  // Internal signals for bindings")
+                    for sig_name, sig_type in sorted(filtered_signals.items()):
+                        type_str = self._get_sv_type(sig_type)
+                        lines.append(f"  {type_str} {sig_name};")
+                    lines.append("")
 
         # Instantiate components (inst() fields)
         lines.extend(self._generate_component_instances(comp))

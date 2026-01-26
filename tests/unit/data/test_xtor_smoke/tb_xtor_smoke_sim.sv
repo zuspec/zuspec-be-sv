@@ -30,7 +30,7 @@ module tb;
         
         // Test case 1: Send 0x12345678
         $display("%0t: Sending 0x12345678", $time);
-        dut.xtor_if.send(result, 32'h12345678);
+        dut.xtor_if.send(32'h12345678, result);
         $display("%0t: Returned 0x%h", $time, result);
         
         if (result !== 32'h12345679) begin
@@ -42,7 +42,7 @@ module tb;
         
         // Test case 2: Send 0x00000010
         $display("%0t: Sending 0x00000010", $time);
-        dut.xtor_if.send(result, 32'h00000010);
+        dut.xtor_if.send(32'h00000010, result);
         $display("%0t: Returned 0x%h", $time, result);
         
         if (result !== 32'h00000011) begin
@@ -54,7 +54,7 @@ module tb;
         
         // Test case 3: Send 0x00000000
         $display("%0t: Sending 0x00000000", $time);
-        dut.xtor_if.send(result, 32'h00000000);
+        dut.xtor_if.send(32'h00000000, result);
         $display("%0t: Returned 0x%h", $time, result);
         
         if (result !== 32'h00000001) begin

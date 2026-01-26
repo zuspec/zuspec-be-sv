@@ -34,7 +34,7 @@ module tb;
         $display("%0t: Calling dut.xtor_if.send(32'h42)", $time);
         $display("%0t:   Before call: reset=%b, ready=%b, valid=%b", $time, reset, dut.ready, dut.valid);
         
-        dut.xtor_if.send(result, 32'h42);
+        dut.xtor_if.send(32'h42, result);
         
         $display("%0t: Returned from send, result = 0x%h", $time, result);
         $display("%0t:   After call: ready=%b, valid=%b, data_i=0x%h, data_o=0x%h", 
