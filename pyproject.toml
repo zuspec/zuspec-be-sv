@@ -13,7 +13,10 @@ authors = [
     {name = "Matthew Ballance", email = "matt.ballance@gmail.com"}
 ]
 
-dependencies = []
+dependencies = [
+    "zuspec-dataclasses",
+    "zuspec-synth",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -35,7 +38,7 @@ Homepage = "https://github.com/zuspec/zuspec-be-sv-simplify"
 Repository = "https://github.com/zuspec/zuspec-be-sv-simplify"
 
 [tool.setuptools]
-packages = ["zuspec.be.sv"]
+packages = ["zuspec.be.sv", "zuspec.be.sv.ir", "zuspec.be.sv.passes"]
 package-dir = {"" = "src"}
 
 [tool.pytest.ini_options]
