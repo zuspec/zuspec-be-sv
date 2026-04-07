@@ -1220,6 +1220,10 @@ class SVGenerator:
                 # Collect remaining sibling statements (skip any bare StmtReturn)
                 remaining = [s for s in stmts[i+1:] if not isinstance(s, ir.StmtReturn)]
                 ind = "  " * indent
+                comment = getattr(stmt, 'comment', None)
+                if comment:
+                    for cline in comment.splitlines():
+                        lines.append(f"{ind}// {cline}")
                 pragmas = getattr(stmt, 'pragmas', {})
                 if pragmas:
                     attr_parts = [k for k in pragmas if pragmas[k] is True]
@@ -1243,7 +1247,13 @@ class SVGenerator:
         """Generate SystemVerilog statement."""
         ind = "  " * indent
         lines = []
-        
+
+        # Emit leading comment lines attached to this statement
+        comment = getattr(stmt, 'comment', None)
+        if comment:
+            for cline in comment.splitlines():
+                lines.append(f"{ind}// {cline}")
+
         if isinstance(stmt, ir.StmtIf):
             pragmas = getattr(stmt, 'pragmas', {})
             if pragmas:
