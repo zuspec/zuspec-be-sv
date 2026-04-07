@@ -22,11 +22,12 @@ from zuspec.dataclasses import ir
 class SVGenerator:
     """Main SystemVerilog code generator from datamodel."""
 
-    def __init__(self, output_dir: Path, debug_annotations: bool = False):
+    def __init__(self, output_dir: Path, debug_annotations: bool = False, method_tags: bool = True):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._ctxt: ir.Context = None
         self.debug_annotations = debug_annotations
+        self.method_tags = method_tags
 
     def _sanitize_sv_name(self, name: str) -> str:
         """Sanitize a name to be a valid SystemVerilog identifier.
@@ -994,11 +995,23 @@ class SVGenerator:
                 return [f"  assign {func.name} = {expr_str};", ""]
         return []
 
+    def _emit_process_header(self, func: ir.Function) -> List[str]:
+        """Emit the comment block and optional method-name tag before an always block."""
+        lines = []
+        comment = getattr(func, 'comment', None)
+        if comment:
+            for cline in comment.splitlines():
+                lines.append(f"  // {cline}")
+        if self.method_tags:
+            lines.append(f"  // [{func.name}]")
+        return lines
+
     def _generate_comb_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
         """Generate always @(*) block from a @comb method."""
         lines = []
         if self.debug_annotations and func.loc:
             lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
+        lines.extend(self._emit_process_header(func))
         lines.append(f"  always @(*) begin")
         local_vars = self._collect_local_vars(func.body)
         for name in sorted(local_vars):
@@ -1044,7 +1057,9 @@ class SVGenerator:
         # Add source location annotation if debug mode is enabled
         if self.debug_annotations and func.loc:
             lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
-        
+
+        lines.extend(self._emit_process_header(func))
+
         # Extract clock and reset from metadata
         clock_name = None
         reset_name = None
@@ -1089,7 +1104,8 @@ class SVGenerator:
         # Add source location annotation if debug mode is enabled
         if self.debug_annotations and func.loc:
             lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
-        
+
+        lines.extend(self._emit_process_header(func))
         lines.append("  initial begin")
         
         # Generate body, converting async/await to SV
