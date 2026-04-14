@@ -22,11 +22,12 @@ from zuspec.dataclasses import ir
 class SVGenerator:
     """Main SystemVerilog code generator from datamodel."""
 
-    def __init__(self, output_dir: Path, debug_annotations: bool = False):
+    def __init__(self, output_dir: Path, debug_annotations: bool = False, method_tags: bool = True):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._ctxt: ir.Context = None
         self.debug_annotations = debug_annotations
+        self.method_tags = method_tags
 
     def _sanitize_sv_name(self, name: str) -> str:
         """Sanitize a name to be a valid SystemVerilog identifier.
@@ -398,11 +399,35 @@ class SVGenerator:
                 else:
                     type_str = f"logic [{field.datatype.bits-1}:0]"
                 lines.append(f"  {type_str} {field.name};")
+            elif isinstance(field.datatype, ir.DataTypeArray):
+                # Memory / register-file array: logic [W-1:0] name [0:N-1]
+                elem = field.datatype.element_type
+                size = field.datatype.size
+                if isinstance(elem, ir.DataTypeInt):
+                    bits = elem.bits
+                    elem_type = "logic" if bits <= 1 else f"logic [{bits-1}:0]"
+                else:
+                    elem_type = "logic [31:0]"
+                lines.append(f"  {elem_type} {field.name} [0:{size-1}];")
             elif type(field.datatype) == ir.DataType:
                 # Bare DataType - infer from field name
                 type_str = self._infer_signal_type_from_name(field.name)
                 lines.append(f"  {type_str} {field.name};")
-        if any((not isinstance(f, ir.FieldInOut) and (isinstance(f.datatype, ir.DataTypeInt) or type(f.datatype) == ir.DataType) and f.kind != ir.FieldKind.Export) for f in comp.fields):
+        if any((not isinstance(f, ir.FieldInOut) and
+                (isinstance(f.datatype, (ir.DataTypeInt, ir.DataTypeArray)) or
+                 type(f.datatype) == ir.DataType) and
+                f.kind != ir.FieldKind.Export) for f in comp.fields):
+            lines.append("")
+
+        # Declare wire signals for @property processes
+        for func in comp.wire_processes:
+            ret = func.returns
+            if isinstance(ret, ir.DataTypeInt):
+                wtype = "logic" if ret.bits <= 1 else f"logic [{ret.bits-1}:0]"
+            else:
+                wtype = "logic"
+            lines.append(f"  {wtype} {func.name};")
+        if comp.wire_processes:
             lines.append("")
         
         # Declare internal signals for bindings
@@ -450,8 +475,16 @@ class SVGenerator:
         # Generate sync processes (always blocks)
         for func in comp.sync_processes:
             lines.extend(self._generate_sync_process(func, comp))
+
+        # Generate combinational processes (@comb → always @(*))
+        for func in comp.comb_processes:
+            lines.extend(self._generate_comb_process(func, comp))
+
+        # Generate continuous-assignment wires (@property → assign)
+        for func in comp.wire_processes:
+            lines.extend(self._generate_wire_process(func, comp))
+
         
-        # Generate async processes (initial blocks for @process methods)
         # Filter for async functions that aren't already in sync_processes
         async_funcs = []
         for f in comp.functions:
@@ -934,6 +967,89 @@ class SVGenerator:
 
         return lines
 
+    def _collect_local_vars(self, stmts: list) -> set:
+        """Recursively collect ExprRefLocal targets to find locally-assigned variables."""
+        found = set()
+        for stmt in stmts:
+            if hasattr(stmt, 'targets'):
+                for t in stmt.targets:
+                    if isinstance(t, ir.ExprRefLocal):
+                        found.add(t.name)
+            if hasattr(stmt, 'target') and isinstance(stmt.target, ir.ExprRefLocal):
+                found.add(stmt.target.name)
+            for attr in ('body', 'orelse', 'handlers'):
+                sub = getattr(stmt, attr, None)
+                if sub:
+                    found.update(self._collect_local_vars(sub))
+            if hasattr(stmt, 'cases'):
+                for case in stmt.cases:
+                    found.update(self._collect_local_vars(case.body))
+        return found
+
+    def _generate_wire_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
+        """Generate assign statement for a @property wire."""
+        from zuspec.dataclasses.ir.stmt import StmtReturn
+        for stmt in func.body:
+            if isinstance(stmt, StmtReturn) and stmt.value is not None:
+                expr_str = self._generate_expr(stmt.value, comp)
+                return [f"  assign {func.name} = {expr_str};", ""]
+        return []
+
+    def _emit_process_header(self, func: ir.Function) -> List[str]:
+        """Emit the comment block and optional method-name tag before an always block."""
+        lines = []
+        comment = getattr(func, 'comment', None)
+        if comment:
+            for cline in comment.splitlines():
+                lines.append(f"  // {cline}")
+        if self.method_tags:
+            lines.append(f"  // [{func.name}]")
+        return lines
+
+    def _generate_comb_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
+        """Generate always @(*) block from a @comb method."""
+        lines = []
+        if self.debug_annotations and func.loc:
+            lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
+        lines.extend(self._emit_process_header(func))
+        lines.append(f"  always @(*) begin")
+        local_vars = self._collect_local_vars(func.body)
+        for name in sorted(local_vars):
+            lines.append(f"    logic [31:0] {name};")
+        for stmt in func.body:
+            lines.extend(self._generate_stmt(stmt, comp, indent=2, blocking=True))
+        lines.append("  end")
+        lines.append("")
+        return lines
+
+    def _has_active_reset_branch(self, body: list, reset_name: str, comp) -> bool:
+        """Return True only if the first statement is StmtIf(!reset) with real reset assignments."""
+        if not body:
+            return False
+        first = body[0]
+        if not isinstance(first, ir.StmtIf):
+            return False
+        # Verify the test is !reset_signal (ExprUnary Not of the reset field)
+        test = first.test
+        if not isinstance(test, ir.ExprUnary) or test.op != ir.UnaryOp.Not:
+            return False
+        if not isinstance(test.operand, ir.ExprRefField):
+            return False
+        if not isinstance(test.operand.base, ir.TypeExprRefSelf):
+            return False
+        reset_field = comp.fields[test.operand.index].name
+        if reset_field != reset_name:
+            return False
+        # Check that the reset branch body has at least one real assignment
+        def has_real_stmts(stmts):
+            for s in stmts:
+                if isinstance(s, (ir.StmtAssign, ir.StmtAugAssign)):
+                    return True
+                if isinstance(s, ir.StmtIf) and (has_real_stmts(s.body) or has_real_stmts(s.orelse)):
+                    return True
+            return False
+        return has_real_stmts(first.body)
+
     def _generate_sync_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
         """Generate SystemVerilog always block from sync process."""
         lines = []
@@ -941,7 +1057,9 @@ class SVGenerator:
         # Add source location annotation if debug mode is enabled
         if self.debug_annotations and func.loc:
             lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
-        
+
+        lines.extend(self._emit_process_header(func))
+
         # Extract clock and reset from metadata
         clock_name = None
         reset_name = None
@@ -954,18 +1072,22 @@ class SVGenerator:
             if isinstance(reset_expr, ir.ExprRefField):
                 reset_name = comp.fields[reset_expr.index].name
         
-        # Generate always block sensitivity list
+        # Generate always block sensitivity list — always synchronous (posedge clk only).
+        # Reset logic inside the body is checked synchronously (if !resetn).
         sensitivity = []
         if clock_name:
             sensitivity.append(f"posedge {clock_name}")
-        if reset_name:
-            sensitivity.append(f"posedge {reset_name}")
         
         lines.append(f"  always @({' or '.join(sensitivity)}) begin")
-        
-        # Generate body
-        for stmt in func.body:
-            lines.extend(self._generate_stmt(stmt, comp, indent=2))
+
+        # Declare local variables used within this process
+        local_vars = self._collect_local_vars(func.body)
+        for name in sorted(local_vars):
+            lines.append(f"    logic [31:0] {name};")
+
+        # Generate body (early-return hoisting converts `if (cond) { ...; return; }` + remaining
+        # statements into `if (cond) { ...; } else { remaining }`, preserving reset priority)
+        lines.extend(self._generate_stmt_list(func.body, comp, indent=2))
         
         lines.append("  end")
         lines.append("")
@@ -982,7 +1104,8 @@ class SVGenerator:
         # Add source location annotation if debug mode is enabled
         if self.debug_annotations and func.loc:
             lines.append(f"  // Source: {func.loc.file}:{func.loc.line}")
-        
+
+        lines.extend(self._emit_process_header(func))
         lines.append("  initial begin")
         
         # Generate body, converting async/await to SV
@@ -1084,55 +1207,189 @@ class SVGenerator:
         return None
 
 
-    def _generate_stmt(self, stmt: ir.Stmt, comp: ir.DataTypeComponent, indent: int = 0) -> List[str]:
+    def _generate_stmt_list(self, stmts: list, comp: ir.DataTypeComponent, indent: int = 0, subst: dict = None, blocking: bool = False) -> list:
+        """Generate SV for a list of statements with early-return hoisting.
+
+        If a StmtIf with no orelse ends its body with StmtReturn, all subsequent
+        sibling statements are moved into the if's else branch.  This preserves
+        reset-priority semantics:
+
+            Python:                        Generated SV:
+            if not resetn:                 if (!resetn) begin
+                Q = 0                          Q <= 0;
+                return                     end else begin
+            Q = D  # else path                 Q <= D;
+                                           end
+
+        Without this transform the generator would emit two separate if-blocks,
+        making the enable (second if) win over reset — wrong SDFFCE instead of SDFFE.
+        """
+        lines = []
+        i = 0
+        while i < len(stmts):
+            stmt = stmts[i]
+            # Detect: if-block whose body ends with StmtReturn and has no orelse
+            if (isinstance(stmt, ir.StmtIf) and
+                    not stmt.orelse and
+                    stmt.body and
+                    isinstance(stmt.body[-1], ir.StmtReturn)):
+                # Collect remaining sibling statements (skip any bare StmtReturn)
+                remaining = [s for s in stmts[i+1:] if not isinstance(s, ir.StmtReturn)]
+                ind = "  " * indent
+                comment = getattr(stmt, 'comment', None)
+                if comment:
+                    for cline in comment.splitlines():
+                        lines.append(f"{ind}// {cline}")
+                pragmas = getattr(stmt, 'pragmas', {})
+                if pragmas:
+                    attr_parts = [k for k in pragmas if pragmas[k] is True]
+                    if attr_parts:
+                        lines.append(f"{ind}(* {', '.join(attr_parts)} *)")
+                test_expr = self._generate_expr(stmt.test, comp, subst)
+                lines.append(f"{ind}if ({test_expr}) begin")
+                # Emit body without the trailing StmtReturn
+                lines.extend(self._generate_stmt_list(stmt.body[:-1], comp, indent + 1, subst=subst, blocking=blocking))
+                if remaining:
+                    lines.append(f"{ind}end else begin")
+                    lines.extend(self._generate_stmt_list(remaining, comp, indent + 1, subst=subst, blocking=blocking))
+                lines.append(f"{ind}end")
+                return lines  # all remaining siblings consumed
+            else:
+                lines.extend(self._generate_stmt(stmt, comp, indent, subst=subst, blocking=blocking))
+            i += 1
+        return lines
+
+    def _generate_stmt(self, stmt: ir.Stmt, comp: ir.DataTypeComponent, indent: int = 0, subst: dict = None, blocking: bool = False) -> List[str]:
         """Generate SystemVerilog statement."""
         ind = "  " * indent
         lines = []
-        
+
+        # Emit leading comment lines attached to this statement
+        comment = getattr(stmt, 'comment', None)
+        if comment:
+            for cline in comment.splitlines():
+                lines.append(f"{ind}// {cline}")
+
         if isinstance(stmt, ir.StmtIf):
-            test_expr = self._generate_expr(stmt.test, comp)
+            pragmas = getattr(stmt, 'pragmas', {})
+            if pragmas:
+                attr_parts = [k for k in pragmas if pragmas[k] is True]
+                if attr_parts:
+                    lines.append(f"{ind}(* {', '.join(attr_parts)} *)")
+            test_expr = self._generate_expr(stmt.test, comp, subst)
             lines.append(f"{ind}if ({test_expr}) begin")
-            for s in stmt.body:
-                lines.extend(self._generate_stmt(s, comp, indent + 1))
-            if stmt.orelse:
+            lines.extend(self._generate_stmt_list(stmt.body, comp, indent + 1, subst=subst, blocking=blocking))
+            # Walk elif chain: orelse containing a single StmtIf → emit "else if"
+            orelse = stmt.orelse
+            while orelse and len(orelse) == 1 and isinstance(orelse[0], ir.StmtIf):
+                elif_stmt = orelse[0]
+                elif_pragmas = getattr(elif_stmt, 'pragmas', {})
+                elif_test_expr = self._generate_expr(elif_stmt.test, comp, subst)
+                if elif_pragmas:
+                    attr_parts = [k for k in elif_pragmas if elif_pragmas[k] is True]
+                    if attr_parts:
+                        lines.append(f"{ind}end else (* {', '.join(attr_parts)} *) if ({elif_test_expr}) begin")
+                    else:
+                        lines.append(f"{ind}end else if ({elif_test_expr}) begin")
+                else:
+                    lines.append(f"{ind}end else if ({elif_test_expr}) begin")
+                lines.extend(self._generate_stmt_list(elif_stmt.body, comp, indent + 1, subst=subst, blocking=blocking))
+                orelse = elif_stmt.orelse
+            if orelse:
                 lines.append(f"{ind}end else begin")
-                for s in stmt.orelse:
-                    lines.extend(self._generate_stmt(s, comp, indent + 1))
+                lines.extend(self._generate_stmt_list(orelse, comp, indent + 1, subst=subst, blocking=blocking))
             lines.append(f"{ind}end")
         
         elif isinstance(stmt, ir.StmtMatch):
-            # Convert Python match/case to SystemVerilog case statement
-            subject_expr = self._generate_expr(stmt.subject, comp)
+            pragmas = getattr(stmt, 'pragmas', {})
+            if pragmas:
+                attr_parts = [k for k in pragmas if pragmas[k] is True]
+                if attr_parts:
+                    lines.append(f"{ind}(* {', '.join(attr_parts)} *)")
+            subject_expr = self._generate_expr(stmt.subject, comp, subst)
             lines.append(f"{ind}case ({subject_expr})")
             
             for case in stmt.cases:
-                # Generate case pattern
                 case_label = self._generate_pattern(case.pattern, comp)
                 lines.append(f"{ind}  {case_label}: begin")
-                
-                # Generate case body
                 for s in case.body:
-                    lines.extend(self._generate_stmt(s, comp, indent + 2))
-                
+                    lines.extend(self._generate_stmt(s, comp, indent + 2, subst=subst, blocking=blocking))
                 lines.append(f"{ind}  end")
             
             lines.append(f"{ind}endcase")
         
         elif isinstance(stmt, ir.StmtAssign):
+            pragmas = getattr(stmt, 'pragmas', {})
+            use_x = pragmas.get('x', False)
             for target in stmt.targets:
-                target_expr = self._generate_expr(target, comp)
-                value_expr = self._generate_expr(stmt.value, comp)
-                lines.append(f"{ind}{target_expr} <= {value_expr};")
+                is_local = isinstance(target, ir.ExprRefLocal)
+                assign_op = "=" if (blocking or is_local) else "<="
+                target_expr = self._generate_expr(target, comp, subst)
+                if use_x:
+                    lines.append(f"{ind}{target_expr} {assign_op} 'bx;")
+                else:
+                    value_expr = self._generate_expr(stmt.value, comp, subst)
+                    lines.append(f"{ind}{target_expr} {assign_op} {value_expr};")
         
         elif isinstance(stmt, ir.StmtAugAssign):
-            target_expr = self._generate_expr(stmt.target, comp)
-            value_expr = self._generate_expr(stmt.value, comp)
+            is_local = isinstance(stmt.target, ir.ExprRefLocal)
+            assign_op = "=" if (blocking or is_local) else "<="
+            target_expr = self._generate_expr(stmt.target, comp, subst)
+            value_expr = self._generate_expr(stmt.value, comp, subst)
             op = self._get_sv_op(stmt.op)
-            lines.append(f"{ind}{target_expr} <= {target_expr} {op} {value_expr};")
-        
+            lines.append(f"{ind}{target_expr} {assign_op} {target_expr} {op} {value_expr};")
+
+        elif isinstance(stmt, ir.StmtFor):
+            target = stmt.target
+            iter_expr = stmt.iter
+            # Unroll for-loops that iterate over a list of strings (e.g. field names)
+            if isinstance(iter_expr, ir.ExprConstant) and isinstance(iter_expr.value, list):
+                var_name = target.name if isinstance(target, ir.ExprRefLocal) else "_i"
+                for val in iter_expr.value:
+                    subst = {var_name: str(val)}
+                    for s in stmt.body:
+                        lines.extend(self._generate_stmt(s, comp, indent, subst=subst, blocking=blocking))
+            elif isinstance(iter_expr, ir.ExprCall):
+                # range() loop
+                func = getattr(iter_expr, 'func', None)
+                fname = getattr(func, 'name', None)
+                if fname == 'range' and iter_expr.args:
+                    var_name = target.name if isinstance(target, ir.ExprRefLocal) else "i"
+                    if len(iter_expr.args) == 1:
+                        end_val = self._generate_expr(iter_expr.args[0], comp)
+                        lines.append(f"{ind}for (integer {var_name} = 0; {var_name} < {end_val}; {var_name}++) begin")
+                    else:
+                        start_val = self._generate_expr(iter_expr.args[0], comp)
+                        end_val   = self._generate_expr(iter_expr.args[1], comp)
+                        lines.append(f"{ind}for (integer {var_name} = {start_val}; {var_name} < {end_val}; {var_name}++) begin")
+                    for s in stmt.body:
+                        lines.extend(self._generate_stmt(s, comp, indent + 1, blocking=blocking))
+                    lines.append(f"{ind}end")
+
+        elif isinstance(stmt, ir.StmtExpr):
+            # setattr(self, field_name_const, value) from unrolled loop
+            if isinstance(stmt.expr, ir.ExprCall):
+                call = stmt.expr
+                if (isinstance(call.func, ir.ExprRefUnresolved) and
+                        call.func.name == 'setattr' and len(call.args) == 3):
+                    name_arg = call.args[1]
+                    val_arg  = call.args[2]
+                    field_name = None
+                    if isinstance(name_arg, ir.ExprConstant) and isinstance(name_arg.value, str):
+                        field_name = name_arg.value
+                    if isinstance(name_arg, ir.ExprRefLocal) and subst and name_arg.name in subst:
+                        field_name = subst[name_arg.name]
+                    if field_name:
+                        assign_op = "=" if blocking else "<="
+                        val_str = self._generate_expr(val_arg, comp, subst)
+                        lines.append(f"{ind}{field_name} {assign_op} {val_str};")
+
+        elif isinstance(stmt, ir.StmtReturn):
+            pass  # return in always blocks is just end-of-path; handled by if/else structure
+
         return lines
 
-    def _generate_expr(self, expr: ir.Expr, comp: ir.DataTypeComponent) -> str:
+    def _generate_expr(self, expr: ir.Expr, comp: ir.DataTypeComponent, subst: dict = None) -> str:
         """Generate SystemVerilog expression."""
         if isinstance(expr, ir.ExprRefField):
             # Look up field by index
@@ -1179,15 +1436,98 @@ class SVGenerator:
             return str(value)
         
         elif isinstance(expr, ir.ExprAttribute):
+            # self.attr where attr is a @property not tracked as a field index
+            if isinstance(expr.value, ir.TypeExprRefSelf):
+                return expr.attr
+            # ClassName.attr where ClassName is a Python enum/constant class
+            if isinstance(expr.value, ir.ExprRefUnresolved):
+                resolved = self._resolve_py_class_attr(expr.value.name, expr.attr, comp)
+                if resolved is not None:
+                    return str(resolved)
+                return f"{expr.value.name}_{expr.attr}"
             # Handle bundle field access: flatten to bundle_field
             obj = self._generate_expr(expr.value, comp)
             return f"{obj}_{expr.attr}"
-        
+
+        elif isinstance(expr, ir.ExprSubscript):
+            array_expr = self._generate_expr(expr.value, comp)
+            if isinstance(expr.slice, ir.ExprSlice):
+                # Bit-slice: array[high:low]
+                high = self._generate_expr(expr.slice.lower, comp) if expr.slice.lower is not None else None
+                low  = self._generate_expr(expr.slice.upper, comp) if expr.slice.upper is not None else None
+                if high is not None and low is not None:
+                    return f"{array_expr}[{high}:{low}]"
+                elif high is not None:
+                    return f"{array_expr}[{high}]"
+            else:
+                idx_expr = self._generate_expr(expr.slice, comp)
+                return f"{array_expr}[{idx_expr}]"
+
+        elif isinstance(expr, ir.ExprIfExp):
+            # Python  : body if test else orelse
+            # SV      : test ? body : orelse
+            test_s   = self._generate_expr(expr.test,   comp)
+            body_s   = self._generate_expr(expr.body,   comp)
+            orelse_s = self._generate_expr(expr.orelse, comp)
+            return f"({test_s} ? {body_s} : {orelse_s})"
+
+        elif isinstance(expr, ir.ExprCall):
+            # any([a, b, c]) → (a | b | c)
+            if (isinstance(expr.func, ir.ExprRefUnresolved) and
+                    expr.func.name == 'any' and expr.args):
+                from zuspec.dataclasses.ir.expr_phase2 import ExprList
+                arg = expr.args[0]
+                if isinstance(arg, ExprList) and arg.elts:
+                    parts = [f"({self._generate_expr(e, comp)})" for e in arg.elts]
+                    return f"({' | '.join(parts)})"
+            # bool(x) → identity (already 1-bit or treated as boolean in SV)
+            if (isinstance(expr.func, ir.ExprRefUnresolved) and
+                    expr.func.name == 'bool' and len(expr.args) == 1):
+                return self._generate_expr(expr.args[0], comp, subst)
+            # zdc.zext(x, n) → zero-extend lower n bits to 32 bits via masking
+            if (isinstance(expr.func, ir.ExprAttribute) and
+                    isinstance(expr.func.value, ir.ExprRefUnresolved) and
+                    expr.func.value.name == 'zdc' and expr.func.attr == 'zext' and
+                    len(expr.args) == 2):
+                x_expr = self._generate_expr(expr.args[0], comp, subst)
+                n_arg = expr.args[1]
+                if isinstance(n_arg, ir.ExprConstant) and isinstance(n_arg.value, int):
+                    n = n_arg.value
+                    mask = (1 << n) - 1
+                    return f"(({x_expr}) & 32'h{mask:08X})"
+                return f"({x_expr})"
+            
+            if (isinstance(expr.func, ir.ExprAttribute) and
+                    isinstance(expr.func.value, ir.ExprRefUnresolved) and
+                    expr.func.value.name == 'zdc' and expr.func.attr == 'sext' and
+                    len(expr.args) == 2):
+                x_expr = self._generate_expr(expr.args[0], comp)
+                n_arg = expr.args[1]
+                if isinstance(n_arg, ir.ExprConstant) and isinstance(n_arg.value, int):
+                    n = n_arg.value
+                    if n == 32:
+                        return f"$signed({x_expr})"
+                    fill = 32 - n
+                    # Use shift-based sign extension: valid for any expression, avoids
+                    # bit-select on parenthesized expressions which is not legal Verilog.
+                    return f"($signed(({x_expr}) << {fill}) >>> {fill})"
+                return f"$signed({x_expr})"
+
         elif isinstance(expr, ir.ExprBin):
+            # zdc.sext(x, n) >> y → $signed(x) >>> y (arithmetic right shift)
+            if (expr.op == ir.BinOp.RShift and
+                    isinstance(expr.lhs, ir.ExprCall) and
+                    isinstance(expr.lhs.func, ir.ExprAttribute) and
+                    isinstance(expr.lhs.func.value, ir.ExprRefUnresolved) and
+                    expr.lhs.func.value.name == 'zdc' and expr.lhs.func.attr == 'sext' and
+                    expr.lhs.args):
+                x_expr = self._generate_expr(expr.lhs.args[0], comp)
+                right = self._generate_expr(expr.rhs, comp)
+                return f"$signed({x_expr}) >>> {right}"
             left = self._generate_expr(expr.lhs, comp)
             right = self._generate_expr(expr.rhs, comp)
             op = self._get_sv_binop(expr.op)
-            return f"{left} {op} {right}"
+            return f"({left} {op} {right})"
         
         elif isinstance(expr, ir.ExprCompare):
             # Handle comparison expressions
@@ -1200,8 +1540,10 @@ class SVGenerator:
         
         elif isinstance(expr, ir.ExprBool):
             # Handle boolean expressions (and, or)
+            # Wrap each operand in parens to preserve precedence when
+            # and/or are mixed (e.g. A && (B || C) must not become A && B || C).
             op = self._get_sv_boolop(expr.op)
-            operands = [self._generate_expr(v, comp) for v in expr.values]
+            operands = [f"({self._generate_expr(v, comp)})" for v in expr.values]
             return f" {op} ".join(operands)
         
         elif isinstance(expr, ir.ExprUnary):
@@ -1215,7 +1557,9 @@ class SVGenerator:
             return expr.name
         
         elif isinstance(expr, ir.ExprRefLocal):
-            # Local variable reference
+            # Local variable reference — may be substituted in unrolled loops
+            if subst and expr.name in subst:
+                return subst[expr.name]
             return expr.name
         
         return "/* unknown expr */"
@@ -1239,10 +1583,17 @@ class SVGenerator:
     def _get_sv_op(self, op: ir.AugOp) -> str:
         """Convert augmented assignment operator to SystemVerilog."""
         op_map = {
-            ir.AugOp.Add: "+",
-            ir.AugOp.Sub: "-",
-            ir.AugOp.Mult: "*",
-            ir.AugOp.Div: "/",
+            ir.AugOp.Add:      "+",
+            ir.AugOp.Sub:      "-",
+            ir.AugOp.Mult:     "*",
+            ir.AugOp.Div:      "/",
+            ir.AugOp.Mod:      "%",
+            ir.AugOp.LShift:   "<<",
+            ir.AugOp.RShift:   ">>",
+            ir.AugOp.BitAnd:   "&",
+            ir.AugOp.BitOr:    "|",
+            ir.AugOp.BitXor:   "^",
+            ir.AugOp.FloorDiv: "/",
         }
         return op_map.get(op, "?")
 
@@ -1257,6 +1608,22 @@ class SVGenerator:
             ir.CmpOp.GtE: ">=",
         }
         return op_map.get(op, "?")
+
+    def _resolve_py_class_attr(self, class_name: str, attr_name: str,
+                               comp: ir.DataTypeComponent) -> Optional[int]:
+        """Resolve ClassName.attr to an integer constant via the component's Python module."""
+        try:
+            import importlib
+            if comp.py_type:
+                mod = importlib.import_module(comp.py_type.__module__)
+                cls = getattr(mod, class_name, None)
+                if cls is not None:
+                    val = getattr(cls, attr_name, None)
+                    if val is not None:
+                        return int(val)
+        except Exception:
+            pass
+        return None
 
     def _get_sv_boolop(self, op: ir.BoolOp) -> str:
         """Convert boolean operator to SystemVerilog."""
@@ -1809,16 +2176,6 @@ class SVGenerator:
         lines.append(f'{ind}$display("%0t: [{func.name}] Task completed", $time);')
         
         return lines
-    
-    def _collect_local_vars(self, stmt: ir.Stmt, local_vars: set):
-        """Collect local variable names from statements."""
-        if isinstance(stmt, ir.StmtAssign):
-            for target in stmt.targets:
-                if isinstance(target, ir.ExprRefLocal):
-                    local_vars.add(target.name)
-        elif isinstance(stmt, ir.StmtWhile):
-            for s in stmt.body:
-                self._collect_local_vars(s, local_vars)
     
     def _generate_task_stmt(self, stmt: ir.Stmt, comp: ir.DataTypeComponent, indent: int = 0) -> List[str]:
         """Generate SystemVerilog statement for task body."""
