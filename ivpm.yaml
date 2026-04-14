@@ -25,9 +25,6 @@ package:
       url: https://github.com/dv-flow/pytest-dfm.git
     - name: dv-flow-libformal
       url: https://github.com/dv-flow/dv-flow-libformal.git
-    - name: gemini-riscv
-      url: https://github.com/hongping/gemini-riscv.git
-      cache: true
     - name: Sphinx
       src: pypi
     - name: sphinx-argparse
