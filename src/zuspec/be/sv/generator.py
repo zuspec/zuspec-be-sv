@@ -2233,3 +2233,678 @@ class SVGenerator:
             lines.extend(self._generate_stmt(stmt, comp, indent))
         
         return lines
+
+# ---------------------------------------------------------------------------
+# Verilog-2005 FSM Emitter
+# ---------------------------------------------------------------------------
+
+class V2005FSMEmitter:
+    """Emit Verilog-2005 from an FSMModule produced by the SPRTLTransformer.
+
+    Verilog-2005 constraints (IEEE 1364-2005):
+    - No ``logic`` keyword  → use ``reg`` / ``wire``
+    - No ``always_ff`` / ``always_comb`` → use ``always @(...)``
+    - No ``typedef enum``  → use ``localparam`` for state encoding
+    - No ``input logic``   → use ``input wire``
+    - No ``output logic``  → use ``output reg`` or ``output wire``
+
+    Usage::
+
+        emitter = V2005FSMEmitter()
+        verilog = emitter.generate(fsm_module)
+    """
+
+    def __init__(self, indent: str = "  ", constants: Optional[Dict[str, Any]] = None):
+        self._indent = indent
+        self._level = 0
+        self._lines: List[str] = []
+        self._state_names: Dict[int, str] = {}  # state.id → unique emit name
+        self._constants: Dict[str, Any] = constants or {}  # override values for ExprRefUnresolved
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(self, fsm: "FSMModule") -> str:  # noqa: F821 (forward ref)
+        """Return Verilog-2005 source for *fsm*."""
+        self._lines = []
+        self._level = 0
+        self._state_names = self._build_unique_names(fsm)
+        self._emit_header(fsm)
+        self._emit_module_decl(fsm)
+        self._emit_state_localparams(fsm)
+        self._emit_unresolved_params(fsm)
+        self._emit_state_reg(fsm)
+        self._emit_internal_regs(fsm)
+        self._emit_local_var_regs(fsm)
+        self._emit_seq_block(fsm)
+        self._emit_next_state_logic(fsm)
+        self._emit_datapath_logic(fsm)
+        self._emit_module_end()
+        return "\n".join(self._lines) + "\n"
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _w(self, text: str = ""):
+        self._lines.append(self._indent * self._level + text)
+
+    def _push(self):
+        self._level += 1
+
+    def _pop(self):
+        self._level = max(0, self._level - 1)
+
+    def _width_decl(self, width: int) -> str:
+        return f"[{width - 1}:0] " if width > 1 else ""
+
+    def _sname(self, state_id: int) -> str:
+        """Return the unique emit name for a state ID."""
+        return self._state_names.get(state_id, f"S{state_id}")
+
+    @staticmethod
+    def _build_unique_names(fsm: "FSMModule") -> Dict[int, str]:  # noqa: F821
+        """Return a dict mapping state.id → unique Verilog identifier.
+
+        States with duplicate names get ``_<id>`` appended.
+        """
+        from collections import Counter  # noqa: PLC0415
+        counts = Counter(s.name for s in fsm.states)
+        seen: Dict[str, int] = {}
+        result: Dict[int, str] = {}
+        for s in fsm.states:
+            if counts[s.name] > 1:
+                result[s.id] = f"{s.name}_{s.id}"
+            else:
+                result[s.id] = s.name
+        return result
+
+    def _collect_local_vars(self, fsm: "FSMModule") -> List[str]:
+        """Collect local variable names that need to be declared as registers."""
+        from zuspec.synth.sprtl.fsm_ir import (  # noqa: PLC0415
+            FSMAssign, FSMRegRead, FSMRegWrite, FSMMemRequest, FSMMemResponse,
+        )
+        vars_seen: set = set()
+        # Collect names that are really port signals (not local regs)
+        exclude: set = set()
+        for state in fsm.states:
+            for op in state.operations:
+                if isinstance(op, FSMRegRead):
+                    exclude.add(f"{op.reg_name}_rdata")
+                    if op.result_var:
+                        vars_seen.add(op.result_var)
+                elif isinstance(op, FSMRegWrite):
+                    exclude.add(f"{op.reg_name}_wdata")
+                    exclude.add(f"{op.reg_name}_we")
+                elif isinstance(op, FSMMemResponse) and op.result_var:
+                    vars_seen.add(op.result_var + "_data")
+                elif isinstance(op, FSMAssign) and op.target:
+                    vars_seen.add(op.target)  # Keep all, incl. constructor-assigned
+
+        port_names = {p.name for p in fsm.ports}
+        reg_names = {r.name for r in fsm.registers}
+        return sorted((vars_seen - port_names - reg_names) - exclude)
+
+    def _collect_unresolved_names(self, fsm: "FSMModule") -> List[str]:
+        """Collect ExprRefUnresolved names used in loop conditions.
+
+        These are symbolic constants (e.g. ``N_CHAN``) that need to be
+        declared as ``localparam`` so the Verilog is self-contained.
+        """
+        unresolved: set = set()
+        for state in fsm.states:
+            cond = state.wait_condition
+            if isinstance(cond, tuple) and len(cond) == 3:
+                _, _, bound = cond
+                if bound is not None and type(bound).__name__ == 'ExprRefUnresolved':
+                    name = getattr(bound, 'name', None)
+                    if name:
+                        unresolved.add(name)
+        # Remove names that are already local vars (shouldn't happen but guard)
+        local_vars = set(self._collect_local_vars(fsm))
+        return sorted(unresolved - local_vars)
+
+    # ------------------------------------------------------------------
+    # Sections
+    # ------------------------------------------------------------------
+
+    def _emit_header(self, fsm: "FSMModule"):
+        self._w(f"// Verilog-2005 FSM: {fsm.name}")
+        self._w("// Generated by zuspec-be-sv V2005FSMEmitter")
+        self._w("`timescale 1ns/1ps")
+        self._w("/* verilator lint_off DECLFILENAME */")
+        self._w()
+
+    def _emit_module_decl(self, fsm: "FSMModule"):
+        """Module declaration with Verilog-2005 port list."""
+        from zuspec.synth.sprtl.fsm_ir import (  # noqa: PLC0415
+            FSMMemRequest, FSMMemResponse, FSMRegRead, FSMRegWrite,
+        )
+
+        # Collect declared ports; always add clk/rst_n first
+        port_lines = [
+            "input  wire clk",
+            "input  wire rst_n",
+        ]
+
+        # Ports declared explicitly in the FSMModule (from _extract_ports)
+        for p in fsm.ports:
+            if p.name in (fsm.clock_signal, fsm.reset_signal):
+                continue
+            if p.direction == 'input':
+                port_lines.append(
+                    f"input  wire {self._width_decl(p.width)}{p.name}"
+                )
+            else:
+                port_lines.append(
+                    f"output reg  {self._width_decl(p.width)}{p.name}"
+                )
+
+        # Auto-derive mem-interface ports from FSMMemRequest/Response operations
+        mem_ports: Dict[str, List[str]] = {}
+        for state in fsm.states:
+            for op in state.operations:
+                if isinstance(op, (FSMMemRequest, FSMMemResponse)):
+                    pn = op.port_name
+                    if pn not in mem_ports:
+                        mem_ports[pn] = []
+
+        for pn in sorted(mem_ports):
+            port_lines += [
+                f"output reg         {pn}_req_valid",
+                f"output reg  [31:0] {pn}_req_addr",
+                f"output reg  [31:0] {pn}_req_data",
+                f"output reg         {pn}_req_write",
+                f"input  wire        {pn}_req_ready",
+                f"input  wire [31:0] {pn}_rsp_data",
+                f"input  wire        {pn}_rsp_valid",
+                f"output reg         {pn}_rsp_ready",
+            ]
+
+        # Register-file interface ports from FSMRegRead/Write operations
+        read_regs_seen: set = set()
+        write_regs_seen: set = set()
+        for state in fsm.states:
+            for op in state.operations:
+                if isinstance(op, FSMRegRead):
+                    read_regs_seen.add(op.reg_name)
+                elif isinstance(op, FSMRegWrite):
+                    write_regs_seen.add(op.reg_name)
+
+        for r in sorted(read_regs_seen):
+            port_lines.append(f"input  wire [31:0] {r}_rdata")
+        for r in sorted(write_regs_seen):
+            port_lines.append(f"output reg  [31:0] {r}_wdata")
+            port_lines.append(f"output reg         {r}_we")
+
+        # Input wire ports for struct field status bits (ctrl.en, rsp.err, …)
+        attr_signals = sorted(self._collect_attr_signals(fsm))
+        # Exclude signals already covered by mem ports and reg file ports
+        existing = {pl.split()[-1] for pl in port_lines}
+        for sig in attr_signals:
+            if sig not in existing:
+                port_lines.append(f"input  wire        {sig}")
+
+        self._w(f"module {fsm.name} (")
+        self._push()
+        for i, pl in enumerate(port_lines):
+            comma = "," if i < len(port_lines) - 1 else ""
+            self._w(pl + comma)
+        self._pop()
+        self._w(");")
+        self._w()
+
+    def _collect_attr_signals(self, fsm: "FSMModule") -> List[str]:
+        """Collect attribute-based signal names from FSMCond conditions.
+
+        e.g. ExprAttribute(attr='en', value=ExprRefLocal('ctrl')) → 'ctrl_en'
+        """
+        from zuspec.synth.sprtl.fsm_ir import FSMCond  # noqa: PLC0415
+
+        signals: set = set()
+
+        def _scan_cond(cond: Any):
+            if cond is None:
+                return
+            if type(cond).__name__ == 'ExprAttribute':
+                attr = getattr(cond, 'attr', None)
+                value = getattr(cond, 'value', None)
+                if attr and value is not None:
+                    base = self._format_expr(value)
+                    signals.add(f"{base}_{attr}")
+
+        def _scan_op(op: Any):
+            if isinstance(op, FSMCond):
+                _scan_cond(op.condition)
+                for sub in op.then_ops:
+                    _scan_op(sub)
+                for sub in op.else_ops:
+                    _scan_op(sub)
+
+        for state in fsm.states:
+            for op in state.operations:
+                _scan_op(op)
+
+        return sorted(signals)
+
+    def _emit_state_localparams(self, fsm: "FSMModule"):
+        """Emit state encoding as ``localparam`` constants (no typedef enum)."""
+        if not fsm.states:
+            return
+        w = fsm.state_width or 1
+        self._w("// State encoding")
+        self._w(f"localparam integer STATE_W = {w};")
+        for state in fsm.states:
+            enc = fsm.state_encoding.get(state.id, state.id)
+            self._w(f"localparam [STATE_W-1:0] {self._sname(state.id)} = {w}'d{enc};")
+        self._w()
+
+    def _emit_state_reg(self, fsm: "FSMModule"):
+        """Emit state and next_state registers."""
+        if not fsm.states:
+            return
+        self._w("// State registers")
+        self._w("reg [STATE_W-1:0] state;")
+        self._w("reg [STATE_W-1:0] next_state;")
+        self._w()
+
+    def _emit_internal_regs(self, fsm: "FSMModule"):
+        """Emit internal registers declared by the transformer."""
+        regs = [r for r in fsm.registers if r.name != "state"]
+        if not regs:
+            return
+        self._w("// Internal registers")
+        for reg in regs:
+            self._w(f"reg {self._width_decl(reg.width)}{reg.name};")
+        self._w()
+
+    def _emit_local_var_regs(self, fsm: "FSMModule"):
+        """Emit reg declarations for local variables (loop counters, reg-read results)."""
+        local_vars = self._collect_local_vars(fsm)
+        if not local_vars:
+            return
+        self._w("/* verilator lint_off UNUSEDSIGNAL */")
+        self._w("// Local variables (loop counters, reg-read results)")
+        for v in local_vars:
+            self._w(f"reg [31:0] {v};")
+        self._w("/* verilator lint_on UNUSEDSIGNAL */")
+        self._w()
+
+    def _emit_unresolved_params(self, fsm: "FSMModule"):
+        """Emit localparams for symbolic constants used in loop bounds."""
+        names = self._collect_unresolved_names(fsm)
+        if not names:
+            return
+        self._w("// Symbolic constants (override these for your design)")
+        for name in names:
+            val = self._constants.get(name, 0)
+            self._w(f"localparam integer {name} = {val};")
+        self._w()
+
+    def _emit_seq_block(self, fsm: "FSMModule"):
+        """Emit the sequential (clocked) state-register block."""
+        if not fsm.states:
+            return
+        clk = fsm.clock_signal
+        rst = fsm.reset_signal
+        init_name = self._sname(fsm.initial_state)
+
+        self._w("// Sequential state register")
+        if fsm.reset_active_low:
+            self._w(f"always @(posedge {clk} or negedge {rst}) begin")
+            self._push()
+            self._w(f"if (!{rst})")
+            self._push()
+            self._w(f"state <= {init_name};")
+            self._pop()
+            self._w("else")
+            self._push()
+            self._w("state <= next_state;")
+            self._pop()
+            self._pop()
+        else:
+            self._w(f"always @(posedge {clk} or posedge {rst}) begin")
+            self._push()
+            self._w(f"if ({rst})")
+            self._push()
+            self._w(f"state <= {init_name};")
+            self._pop()
+            self._w("else")
+            self._push()
+            self._w("state <= next_state;")
+            self._pop()
+            self._pop()
+        self._w("end")
+        self._w()
+
+    def _emit_next_state_logic(self, fsm: "FSMModule"):
+        """Emit combinational next-state logic as always @(*)."""
+        if not fsm.states:
+            return
+        init_name = self._sname(fsm.initial_state)
+
+        self._w("// Next-state logic")
+        self._w("always @(*) begin")
+        self._push()
+        self._w("next_state = state; // default: stay")
+        self._w("case (state)")
+        self._push()
+
+        for state in fsm.states:
+            self._w(f"{self._sname(state.id)}: begin")
+            self._push()
+            self._emit_transitions(state, fsm)
+            self._pop()
+            self._w("end")
+
+        self._w(f"default: next_state = {init_name};")
+        self._pop()
+        self._w("endcase")
+        self._pop()
+        self._w("end")
+        self._w()
+
+    def _emit_transitions(self, state: "FSMState", fsm: "FSMModule"):
+        """Emit next-state transitions for one state."""
+        conditional = [t for t in state.transitions if t.condition is not None]
+        unconditional = [t for t in state.transitions if t.condition is None]
+
+        # Sort so self-loops (priority=1) come last within conditionals
+        conditional_sorted = sorted(conditional, key=lambda t: t.priority)
+
+        first = True
+        for trans in conditional_sorted:
+            tgt_name = self._sname(trans.target_state)
+            if tgt_name == self._sname(state.id):
+                # Self-loop implicit — no need to emit
+                continue
+            cond_str = self._format_cond(trans.condition)
+            kw = "if" if first else "else if"
+            self._w(f"{kw} ({cond_str})")
+            self._push()
+            self._w(f"next_state = {tgt_name};")
+            self._pop()
+            first = False
+
+        if unconditional:
+            tgt_name = self._sname(unconditional[0].target_state)
+            if not first:
+                self._w("else")
+                self._push()
+                self._w(f"next_state = {tgt_name};")
+                self._pop()
+            else:
+                self._w(f"next_state = {tgt_name};")
+
+    def _emit_datapath_logic(self, fsm: "FSMModule"):
+        """Emit output / datapath logic in a clocked always block."""
+        from zuspec.synth.sprtl.fsm_ir import (  # noqa: PLC0415
+            FSMAssign, FSMCond, FSMRegRead, FSMRegWrite,
+            FSMMemRequest, FSMMemResponse,
+        )
+        clk = fsm.clock_signal
+        rst = fsm.reset_signal
+
+        # Collect all output ports for reset section
+        out_ports = [p for p in fsm.ports if p.direction == 'output']
+
+        # Collect mem ports from operations
+        mem_port_names: List[str] = []
+        for state in fsm.states:
+            for op in state.operations:
+                if isinstance(op, (FSMMemRequest, FSMMemResponse)):
+                    pn = op.port_name
+                    if pn not in mem_port_names:
+                        mem_port_names.append(pn)
+
+        self._w("// Output / datapath logic")
+        if fsm.reset_active_low:
+            self._w(f"always @(posedge {clk} or negedge {rst}) begin")
+            self._push()
+            self._w(f"if (!{rst}) begin")
+        else:
+            self._w(f"always @(posedge {clk} or posedge {rst}) begin")
+            self._push()
+            self._w(f"if ({rst}) begin")
+
+        self._push()
+        # Reset output ports
+        for p in out_ports:
+            rv = p.reset_value if p.reset_value is not None else 0
+            w = p.width
+            self._w(f"{p.name} <= {w}'d{rv};")
+        # Reset mem interface signals
+        for pn in mem_port_names:
+            self._w(f"{pn}_req_valid <= 1'b0;")
+            self._w(f"{pn}_req_addr  <= 32'h0;")
+            self._w(f"{pn}_req_data  <= 32'h0;")
+            self._w(f"{pn}_req_write <= 1'b0;")
+            self._w(f"{pn}_rsp_ready <= 1'b0;")
+        self._pop()
+        self._w("end else begin")
+        self._push()
+        # Default de-assert
+        for pn in mem_port_names:
+            self._w(f"{pn}_req_valid <= 1'b0;")
+            self._w(f"{pn}_rsp_ready <= 1'b0;")
+        self._w("case (state)")
+        self._push()
+
+        for state in fsm.states:
+            if not state.operations:
+                continue
+            self._w(f"{self._sname(state.id)}: begin")
+            self._push()
+            for op in state.operations:
+                self._emit_op(op)
+            self._pop()
+            self._w("end")
+
+        self._w("default: ; // no operation")
+        self._pop()
+        self._w("endcase")
+        self._pop()
+        self._w("end")
+        self._pop()
+        self._w("end")
+        self._w()
+
+    def _emit_op(self, op: Any):
+        """Emit a single FSM operation."""
+        from zuspec.synth.sprtl.fsm_ir import (  # noqa: PLC0415
+            FSMAssign, FSMCond, FSMRegRead, FSMRegWrite,
+            FSMMemRequest, FSMMemResponse,
+        )
+        if isinstance(op, FSMAssign):
+            op_sym = "<=" if op.is_nonblocking else "="
+            if type(getattr(op, 'value', None)).__name__ == 'ExprCall':
+                self._w(f"{op.target} {op_sym} 32'h0; // struct constructor placeholder")
+            else:
+                rhs = self._format_assign_rhs(op.value)
+                self._w(f"{op.target} {op_sym} {rhs};")
+        elif isinstance(op, FSMRegRead):
+            comment = f" // reg-file read: {op.reg_name}"
+            if op.result_var:
+                self._w(f"{op.result_var} <= {op.reg_name}_rdata;{comment}")
+            else:
+                self._w(f"// (reg read: {op.reg_name})")
+        elif isinstance(op, FSMRegWrite):
+            comment = f" // reg-file write: {op.reg_name}"
+            rhs = self._format_assign_rhs(op.value) if op.value is not None else "32'h0"
+            self._w(f"{op.reg_name}_wdata <= {rhs};{comment}")
+            self._w(f"{op.reg_name}_we    <= 1'b1;")
+        elif isinstance(op, FSMMemRequest):
+            pn = op.port_name
+            self._w(f"{pn}_req_valid <= 1'b1;")
+            # req struct fields are driven as 0 (placeholder; real design connects them)
+            self._w(f"{pn}_req_addr  <= 32'h0; // {op.req_var}.addr")
+            self._w(f"{pn}_req_data  <= 32'h0; // {op.req_var}.data")
+            self._w(f"{pn}_req_write <= 1'b0;  // {op.req_var}.write")
+        elif isinstance(op, FSMMemResponse):
+            pn = op.port_name
+            self._w(f"{pn}_rsp_ready <= 1'b1;")
+            if op.result_var:
+                self._w(f"{op.result_var}_data <= {pn}_rsp_data;")
+        elif isinstance(op, FSMCond):
+            self._emit_cond_op(op)
+
+    def _emit_cond_op(self, op: Any):
+        """Emit a conditional (if/else) operation block."""
+        cond_str = self._format_cond(op.condition)
+        self._w(f"if ({cond_str}) begin")
+        self._push()
+        for sub in op.then_ops:
+            self._emit_op(sub)
+        self._pop()
+        if op.else_ops:
+            self._w("end else begin")
+            self._push()
+            for sub in op.else_ops:
+                self._emit_op(sub)
+            self._pop()
+        self._w("end")
+
+    def _emit_module_end(self):
+        self._w("endmodule")
+
+    # ------------------------------------------------------------------
+    # Expression formatting
+    # ------------------------------------------------------------------
+
+    def _format_cond(self, cond: Any) -> str:
+        """Format a condition expression to a Verilog string."""
+        if cond is None:
+            return "1'b1"
+        if isinstance(cond, str):
+            return cond
+        if isinstance(cond, tuple) and len(cond) == 3:
+            op, lhs, rhs = cond
+            lhs_s = self._format_expr(lhs)
+            rhs_s = self._format_expr(rhs)
+            op_map = {'lt': '<', 'le': '<=', 'ge': '>=', 'gt': '>', 'eq': '==', 'ne': '!='}
+            op_str = op_map.get(str(op), str(op))
+            return f"{lhs_s} {op_str} {rhs_s}"
+        if hasattr(cond, 'left'):
+            # IR ExprCompare
+            left = self._format_expr(getattr(cond, 'left', None))
+            ops = getattr(cond, 'comparators', [])
+            right = self._format_expr(ops[0] if ops else None)
+            return f"{left} == {right}"
+        return self._format_expr(cond)
+
+    def _format_expr(self, expr: Any) -> str:
+        """Format an IR expression to a Verilog string.
+
+        Handles common IR node types (ExprConstant, ExprRefLocal, ExprUnary, …)
+        and falls back to safe placeholders for complex nodes.
+        """
+        if expr is None:
+            return "0"
+        if isinstance(expr, bool):
+            return "1'b1" if expr else "1'b0"
+        if isinstance(expr, int):
+            return str(expr)
+        if isinstance(expr, float):
+            return str(int(expr))
+        if isinstance(expr, str):
+            return expr
+
+        node_type = type(expr).__name__
+
+        if node_type == 'ExprConstant':
+            v = getattr(expr, 'value', None)
+            if isinstance(v, bool):
+                return "32'h1" if v else "32'h0"
+            if v is None:
+                return "0"
+            return str(int(v)) if isinstance(v, (int, float)) else "0"
+
+        if node_type in ('ExprRefLocal', 'ExprRefUnresolved'):
+            return getattr(expr, 'name', '0')
+
+        if node_type == 'ExprRefField':
+            idx = getattr(expr, 'index', 0)
+            return f"field_{idx}"
+
+        if node_type == 'ExprUnary':
+            from enum import Enum  # noqa: PLC0415
+            op = getattr(expr, 'op', None)
+            operand = getattr(expr, 'operand', None)
+            op_name = op.name if isinstance(op, Enum) else str(op)
+            operand_str = self._format_expr(operand)
+            if op_name == 'USub':
+                try:
+                    return str(-int(operand_str))
+                except (ValueError, TypeError):
+                    return f"-{operand_str}"
+            if op_name in ('Not', 'Invert'):
+                return f"~{operand_str}"
+            return f"-{operand_str}"
+
+        if node_type == 'ExprAttribute':
+            attr = getattr(expr, 'attr', 'x')
+            value = getattr(expr, 'value', None)
+            if value is not None:
+                base = self._format_expr(value)
+                return f"{base}_{attr}"
+            return attr
+
+        if node_type == 'ExprSubscript':
+            value = getattr(expr, 'value', None)
+            slice_ = getattr(expr, 'slice', None)
+            # Array subscript — return just the index as the signal value
+            # (In RTL the actual mux/array access is implemented by the reg file)
+            return self._format_expr(slice_)
+
+        if node_type == 'ExprCall':
+            # Constructor call (MemReq, CtrlReg, …) → placeholder 0
+            return "32'h0 /* constructor */"
+
+        # Fallback for other nodes with a 'value' or 'name'
+        if hasattr(expr, 'value') and not callable(getattr(expr, 'accept', None)):
+            return str(getattr(expr, 'value', 0))
+        if hasattr(expr, 'name'):
+            return str(expr.name)
+        if hasattr(expr, 'attr'):
+            return str(expr.attr)
+
+        return "0 /* opaque */"
+
+    def _format_assign_rhs(self, value: Any) -> str:
+        if value is None:
+            return "0"
+        if isinstance(value, (int, float)):
+            return str(int(value))
+        if isinstance(value, bool):
+            return "1'b1" if value else "1'b0"
+        if isinstance(value, tuple) and len(value) == 3:
+            # Augmented assignment: (target_name, op_token, rhs_expr)
+            lhs, op, rhs = value
+            lhs_s = self._format_expr(lhs)
+            rhs_s = self._format_expr(rhs)
+            op_map = {'+': '+', '-': '-', '*': '*', '/': '/', '&': '&', '|': '|'}
+            op_str = op_map.get(str(op), str(op))
+            return f"{lhs_s} {op_str} {rhs_s}"
+        return self._format_expr(value)
+
+
+def generate_fsm(fsm: Any, v2005: bool = True,
+                 constants: Optional[Dict[str, Any]] = None) -> str:
+    """Generate Verilog-2005 (or SystemVerilog) for an FSMModule.
+
+    Args:
+        fsm:       An ``FSMModule`` produced by ``SPRTLTransformer.transform()``.
+        v2005:     When ``True`` (default) emit Verilog-2005 compatible code.
+                   When ``False``, falls back to the existing ``SVCodeGenerator``.
+        constants: Optional mapping of symbolic constant names to integer values.
+                   Used to resolve ``ExprRefUnresolved`` nodes (e.g. ``N_CHAN``).
+
+    Returns:
+        Source code as a single string.
+    """
+    if v2005:
+        return V2005FSMEmitter(constants=constants or {}).generate(fsm)
+    # Fall back to the SV code generator from zuspec-synth
+    from zuspec.synth.sprtl.sv_codegen import SVCodeGenerator, SVGenConfig  # noqa: PLC0415
+    return SVCodeGenerator(SVGenConfig()).generate(fsm)
