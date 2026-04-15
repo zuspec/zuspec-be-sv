@@ -25,6 +25,7 @@ dev = [
     "zuspec-dataclasses",
     "zuspec-be-sw",
     "pyhdl-if",
+    "gemini-riscv",
     "Sphinx",
     "sphinx-argparse",
     "sphinxcontrib-makedomain",
