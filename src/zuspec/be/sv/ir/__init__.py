@@ -39,11 +39,20 @@ from .rtl import (
 )
 from .rtl_emit import RTLEmitter
 from .sv import (
+    SVArg,
     SVClass,
+    SVClassField,
+    SVConstraintBlock,
     SVField,
+    SVForwardDecl,
+    SVFunctionDecl,
+    SVImportDPI,
     SVInterface,
+    SVLineDirective,
+    SVModuleDecl,
     SVPackage,
     SVRawItem,
+    SVTaskDecl,
     SVTypedefEnum,
     SVTypedefStruct,
     SVTypedefUnion,
@@ -60,8 +69,11 @@ __all__ = [
     # RTL emitter
     "RTLEmitter",
     # SV IR
-    "SVField", "SVTypedefStruct", "SVTypedefEnum", "SVTypedefUnion",
-    "SVPackage", "SVRawItem", "SVClass", "SVInterface",
+    "SVArg", "SVClass", "SVClassField", "SVConstraintBlock",
+    "SVField", "SVForwardDecl", "SVFunctionDecl", "SVImportDPI",
+    "SVInterface", "SVLineDirective", "SVModuleDecl", "SVPackage",
+    "SVRawItem", "SVTaskDecl", "SVTypedefEnum", "SVTypedefStruct",
+    "SVTypedefUnion",
     # SV emitter
     "SVEmitter",
 ]

@@ -25,11 +25,20 @@ from typing import Any, List
 from zuspec.be.sv.ir.rtl import RTLModule, RTLRawModule
 from zuspec.be.sv.ir.rtl_emit import RTLEmitter
 from zuspec.be.sv.ir.sv import (
+    SVArg,
     SVClass,
+    SVClassField,
+    SVConstraintBlock,
     SVField,
+    SVForwardDecl,
+    SVFunctionDecl,
+    SVImportDPI,
     SVInterface,
+    SVLineDirective,
+    SVModuleDecl,
     SVPackage,
     SVRawItem,
+    SVTaskDecl,
     SVTypedefEnum,
     SVTypedefStruct,
     SVTypedefUnion,
@@ -119,16 +128,153 @@ class SVEmitter:
         return "\n".join(item.lines)
 
     # ------------------------------------------------------------------
-    # Stub serialisation (future phases)
+    # Argument / field helpers
+    # ------------------------------------------------------------------
+
+    def _emit_arg_list(self, args: List[SVArg]) -> str:
+        """Format a task/function argument list."""
+        parts: List[str] = []
+        for a in args:
+            parts.append(f"{a.direction} {a.dtype} {a.name}")
+        return ", ".join(parts)
+
+    def _emit_class_field(self, cf: SVClassField, indent: str = "  ") -> str:
+        """Emit one class field declaration line."""
+        qual = ""
+        if cf.is_randc:
+            qual = "randc "
+        elif cf.is_rand:
+            qual = "rand "
+        init = f" = {cf.initial_value}" if cf.initial_value is not None else ""
+        return f"{indent}{qual}{cf.dtype} {cf.name}{init};"
+
+    # ------------------------------------------------------------------
+    # Constraint block
+    # ------------------------------------------------------------------
+
+    def emit_constraint_block(self, cb: SVConstraintBlock, indent: str = "  ") -> str:
+        """Emit a ``constraint name { expr; ... }`` block."""
+        lines: List[str] = [f"{indent}constraint {cb.name} {{"]
+        for expr in cb.exprs:
+            lines.append(f"{indent}  {expr};")
+        lines.append(f"{indent}}}")
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Task / function declarations
+    # ------------------------------------------------------------------
+
+    def emit_task_decl(self, td: SVTaskDecl, indent: str = "  ") -> str:
+        """Emit a task declaration."""
+        args_str = f"({self._emit_arg_list(td.args)})" if td.args else "()"
+        if td.is_pure:
+            return f"{indent}pure virtual task {td.name}{args_str};"
+        prefix = "virtual " if td.is_virtual else ""
+        lines: List[str] = [f"{indent}{prefix}task {td.name}{args_str};"]
+        for line in td.body_lines:
+            lines.append(f"{indent}  {line}")
+        lines.append(f"{indent}endtask")
+        return "\n".join(lines)
+
+    def emit_function_decl(self, fd: SVFunctionDecl, indent: str = "  ") -> str:
+        """Emit a function declaration."""
+        args_str = f"({self._emit_arg_list(fd.args)})" if fd.args else "()"
+        if fd.is_pure:
+            return f"{indent}pure virtual function {fd.return_type} {fd.name}{args_str};"
+        prefix = "virtual " if fd.is_virtual else ""
+        ret_str = f"{fd.return_type} " if fd.return_type else ""
+        lines: List[str] = [f"{indent}{prefix}function {ret_str}{fd.name}{args_str};"]
+        for line in fd.body_lines:
+            lines.append(f"{indent}  {line}")
+        lines.append(f"{indent}endfunction")
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Class serialisation
     # ------------------------------------------------------------------
 
     def emit_class(self, cls: SVClass) -> str:
-        """Emit a class stub (placeholder — full impl in a future phase)."""
-        return f"// SVClass stub: {cls.name}"
+        """Emit a full ``[virtual] class name [extends base]; ... endclass``."""
+        parts: List[str] = []
+
+        # Forward declarations
+        for fwd in cls.forward_decls:
+            parts.append(f"typedef class {fwd};")
+
+        # Class header
+        kw = "virtual class" if cls.is_virtual else "class"
+        ext = f" extends {cls.extends_name}" if cls.extends_name else ""
+        parts.append(f"{kw} {cls.name}{ext};")
+
+        # Fields
+        for cf in cls.fields:
+            parts.append(self._emit_class_field(cf))
+
+        # Constraints
+        for cb in cls.constraints:
+            parts.append("")
+            parts.append(self.emit_constraint_block(cb))
+
+        # Functions
+        for fd in cls.functions:
+            parts.append("")
+            parts.append(self.emit_function_decl(fd))
+
+        # Tasks
+        for td in cls.tasks:
+            parts.append("")
+            parts.append(self.emit_task_decl(td))
+
+        # Miscellaneous items
+        for item in cls.items:
+            parts.append("")
+            parts.append(f"  {self.emit_one(item)}")
+
+        parts.append(f"endclass")
+        return "\n".join(parts)
 
     def emit_interface(self, iface: SVInterface) -> str:
         """Emit an interface stub (placeholder — full impl in a future phase)."""
         return f"// SVInterface stub: {iface.name}"
+
+    # ------------------------------------------------------------------
+    # DPI import
+    # ------------------------------------------------------------------
+
+    def emit_import_dpi(self, dpi: SVImportDPI) -> str:
+        """Emit an ``import "DPI-C" function/task ...;`` declaration."""
+        args_str = f"({self._emit_arg_list(dpi.args)})" if dpi.args else "()"
+        if dpi.func_or_task == "task":
+            return f'import "{dpi.language}" task {dpi.name}{args_str};'
+        return f'import "{dpi.language}" function {dpi.return_type} {dpi.name}{args_str};'
+
+    # ------------------------------------------------------------------
+    # Module (non-RTL, testbench)
+    # ------------------------------------------------------------------
+
+    def emit_module_decl(self, mod: SVModuleDecl) -> str:
+        """Emit a ``module name; ... endmodule`` block."""
+        lines: List[str] = [f"module {mod.name};"]
+        for line in mod.body_lines:
+            lines.append(f"  {line}")
+        lines.append(f"endmodule")
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Line directive
+    # ------------------------------------------------------------------
+
+    def emit_line_directive(self, ld: SVLineDirective) -> str:
+        """Emit a ```line`` directive."""
+        return f'`line {ld.lineno} "{ld.filename}" 0'
+
+    # ------------------------------------------------------------------
+    # Forward declaration
+    # ------------------------------------------------------------------
+
+    def emit_forward_decl(self, fd: SVForwardDecl) -> str:
+        """Emit a ``typedef class name;`` forward declaration."""
+        return f"typedef class {fd.class_name};"
 
     # ------------------------------------------------------------------
     # Dispatch
@@ -150,6 +296,22 @@ class SVEmitter:
             return self.emit_class(construct)
         if isinstance(construct, SVInterface):
             return self.emit_interface(construct)
+        if isinstance(construct, SVClassField):
+            return self._emit_class_field(construct, indent="")
+        if isinstance(construct, SVConstraintBlock):
+            return self.emit_constraint_block(construct, indent="")
+        if isinstance(construct, SVTaskDecl):
+            return self.emit_task_decl(construct, indent="")
+        if isinstance(construct, SVFunctionDecl):
+            return self.emit_function_decl(construct, indent="")
+        if isinstance(construct, SVImportDPI):
+            return self.emit_import_dpi(construct)
+        if isinstance(construct, SVModuleDecl):
+            return self.emit_module_decl(construct)
+        if isinstance(construct, SVLineDirective):
+            return self.emit_line_directive(construct)
+        if isinstance(construct, SVForwardDecl):
+            return self.emit_forward_decl(construct)
         # Delegate RTL types to the embedded RTLEmitter
         if isinstance(construct, (RTLModule, RTLRawModule)):
             return self._rtl.emit_one(construct)
