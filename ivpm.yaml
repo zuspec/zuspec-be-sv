@@ -17,8 +17,6 @@ package:
       url: https://github.com/zuspec/zuspec-dataclasses.git
     - name: zuspec-ir-core
       url: https://github.com/zuspec/zuspec-ir-core.git
-    - name: zuspec-be-sw
-      url: https://github.com/zuspec/zuspec-be-sw.git
     - name: pytest
       src: pypi
     - name: pyhdl-if
@@ -27,9 +25,6 @@ package:
       url: https://github.com/dv-flow/pytest-dfm.git
     - name: dv-flow-libformal
       url: https://github.com/dv-flow/dv-flow-libformal.git
-    - name: gemini-riscv
-      url: https://github.com/hongping/gemini-riscv.git
-      cache: true
     - name: Sphinx
       src: pypi
     - name: sphinx-argparse
