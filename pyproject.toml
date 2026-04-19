@@ -16,6 +16,7 @@ authors = [
 dependencies = [
     "zuspec-dataclasses",
     "zuspec-synth",
+    "zuspec-ir-core",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +37,9 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/zuspec/zuspec-be-sv-simplify"
 Repository = "https://github.com/zuspec/zuspec-be-sv-simplify"
+
+[project.entry-points."zuspec.ext"]
+zuspec_be_sv = "zuspec.be.sv.cli_plugin:SVBackendPlugin"
 
 [tool.setuptools]
 packages = ["zuspec.be.sv", "zuspec.be.sv.ir", "zuspec.be.sv.passes"]

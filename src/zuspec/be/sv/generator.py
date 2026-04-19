@@ -988,7 +988,7 @@ class SVGenerator:
 
     def _generate_wire_process(self, func: ir.Function, comp: ir.DataTypeComponent) -> List[str]:
         """Generate assign statement for a @property wire."""
-        from zuspec.dataclasses.ir.stmt import StmtReturn
+        from zuspec.ir.core.stmt import StmtReturn
         for stmt in func.body:
             if isinstance(stmt, StmtReturn) and stmt.value is not None:
                 expr_str = self._generate_expr(stmt.value, comp)
@@ -1475,7 +1475,7 @@ class SVGenerator:
             # any([a, b, c]) → (a | b | c)
             if (isinstance(expr.func, ir.ExprRefUnresolved) and
                     expr.func.name == 'any' and expr.args):
-                from zuspec.dataclasses.ir.expr_phase2 import ExprList
+                from zuspec.ir.core.expr_phase2 import ExprList
                 arg = expr.args[0]
                 if isinstance(arg, ExprList) and arg.elts:
                     parts = [f"({self._generate_expr(e, comp)})" for e in arg.elts]
@@ -2092,7 +2092,7 @@ class SVGenerator:
             # Check return statements in function body for tuple
             for stmt in func.body:
                 if isinstance(stmt, ir.StmtReturn) and stmt.value:
-                    from zuspec.dataclasses.ir.expr_phase2 import ExprTuple
+                    from zuspec.ir.core.expr_phase2 import ExprTuple
                     if isinstance(stmt.value, ExprTuple):
                         is_tuple_return = True
                         # Get type of each tuple element
@@ -2217,7 +2217,7 @@ class SVGenerator:
         elif isinstance(stmt, ir.StmtReturn):
             # Return statement - assign to __ret or unpack tuple to __ret_0, __ret_1, ...
             if stmt.value:
-                from zuspec.dataclasses.ir.expr_phase2 import ExprTuple
+                from zuspec.ir.core.expr_phase2 import ExprTuple
                 if isinstance(stmt.value, ExprTuple):
                     # Tuple return - unpack to individual output parameters
                     for i, elem_expr in enumerate(stmt.value.elts):
