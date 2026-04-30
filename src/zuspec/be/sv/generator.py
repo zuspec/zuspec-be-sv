@@ -1471,6 +1471,28 @@ class SVGenerator:
             orelse_s = self._generate_expr(expr.orelse, comp)
             return f"({test_s} ? {body_s} : {orelse_s})"
 
+        elif isinstance(expr, ir.ExprSext):
+            x_expr = self._generate_expr(expr.value, comp)
+            n = expr.bits
+            if n == 32:
+                return f"$signed({x_expr})"
+            fill = 32 - n
+            return f"($signed(({x_expr}) << {fill}) >>> {fill})"
+
+        elif isinstance(expr, ir.ExprZext):
+            x_expr = self._generate_expr(expr.value, comp)
+            mask = (1 << expr.bits) - 1
+            return f"(({x_expr}) & 32'h{mask:08X})"
+
+        elif isinstance(expr, ir.ExprCbit):
+            inner = self._generate_expr(expr.value, comp)
+            if isinstance(expr.value, ir.ExprCompare):
+                return inner
+            return f"({inner}[0])"
+
+        elif isinstance(expr, ir.ExprSigned):
+            return f"$signed({self._generate_expr(expr.value, comp)})"
+
         elif isinstance(expr, ir.ExprCall):
             # any([a, b, c]) → (a | b | c)
             if (isinstance(expr.func, ir.ExprRefUnresolved) and
@@ -1514,7 +1536,12 @@ class SVGenerator:
                 return f"$signed({x_expr})"
 
         elif isinstance(expr, ir.ExprBin):
-            # zdc.sext(x, n) >> y → $signed(x) >>> y (arithmetic right shift)
+            # ExprSext(x, n) >> y → $signed(x) >>> y (arithmetic right shift)
+            if (expr.op == ir.BinOp.RShift and isinstance(expr.lhs, ir.ExprSext)):
+                x_expr = self._generate_expr(expr.lhs.value, comp)
+                right = self._generate_expr(expr.rhs, comp)
+                return f"$signed({x_expr}) >>> {right}"
+            # zdc.sext(x, n) >> y via old ExprCall form (backward compat)
             if (expr.op == ir.BinOp.RShift and
                     isinstance(expr.lhs, ir.ExprCall) and
                     isinstance(expr.lhs.func, ir.ExprAttribute) and
