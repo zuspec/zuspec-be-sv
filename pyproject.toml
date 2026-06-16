@@ -14,8 +14,6 @@ authors = [
 ]
 
 dependencies = [
-    "zuspec-dataclasses",
-    "zuspec-synth",
     "zuspec-ir-core",
 ]
 
@@ -24,19 +22,12 @@ dev = [
     "pytest>=6.0",
     "pytest-dfm",
     "zuspec-dataclasses",
-    "zuspec-be-sw",
-    "pyhdl-if",
-    "gemini-riscv",
-    "Sphinx",
-    "sphinx-argparse",
-    "sphinxcontrib-makedomain",
-    "sphinxcontrib-spelling",
-    "sphinx-rtd-theme",
+    "sphinx",
 ]
 
 [project.urls]
-Homepage = "https://github.com/zuspec/zuspec-be-sv-simplify"
-Repository = "https://github.com/zuspec/zuspec-be-sv-simplify"
+Homepage = "https://github.com/zuspec/zuspec-be-sv"
+Repository = "https://github.com/zuspec/zuspec-be-sv"
 
 [project.entry-points."zuspec.ext"]
 zuspec_be_sv = "zuspec.be.sv.cli_plugin:SVBackendPlugin"
