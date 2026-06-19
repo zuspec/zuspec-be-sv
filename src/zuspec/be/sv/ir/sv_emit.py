@@ -19,6 +19,7 @@ where *constructs* is any ordered mix of SV IR and RTL IR nodes.
 """
 from __future__ import annotations
 
+import dataclasses as dc
 import math
 from typing import Any, List
 
@@ -34,6 +35,7 @@ from zuspec.be.sv.ir.sv import (
     SVFunctionDecl,
     SVImportDPI,
     SVInterface,
+    SVInterfaceClass,
     SVLineDirective,
     SVModuleDecl,
     SVPackage,
@@ -141,10 +143,12 @@ class SVEmitter:
     def _emit_class_field(self, cf: SVClassField, indent: str = "  ") -> str:
         """Emit one class field declaration line."""
         qual = ""
+        if cf.is_static:
+            qual = "static "
         if cf.is_randc:
-            qual = "randc "
+            qual += "randc "
         elif cf.is_rand:
-            qual = "rand "
+            qual += "rand "
         init = f" = {cf.initial_value}" if cf.initial_value is not None else ""
         return f"{indent}{qual}{cf.dtype} {cf.name}{init};"
 
@@ -181,7 +185,7 @@ class SVEmitter:
         args_str = f"({self._emit_arg_list(fd.args)})" if fd.args else "()"
         if fd.is_pure:
             return f"{indent}pure virtual function {fd.return_type} {fd.name}{args_str};"
-        prefix = "virtual " if fd.is_virtual else ""
+        prefix = "static " if fd.is_static else ("virtual " if fd.is_virtual else "")
         ret_str = f"{fd.return_type} " if fd.return_type else ""
         lines: List[str] = [f"{indent}{prefix}function {ret_str}{fd.name}{args_str};"]
         for line in fd.body_lines:
@@ -204,7 +208,8 @@ class SVEmitter:
         # Class header
         kw = "virtual class" if cls.is_virtual else "class"
         ext = f" extends {cls.extends_name}" if cls.extends_name else ""
-        parts.append(f"{kw} {cls.name}{ext};")
+        impl = f" implements {', '.join(cls.implements)}" if cls.implements else ""
+        parts.append(f"{kw} {cls.name}{ext}{impl};")
 
         # Fields
         for cf in cls.fields:
@@ -231,6 +236,29 @@ class SVEmitter:
             parts.append(f"  {self.emit_one(item)}")
 
         parts.append(f"endclass")
+        return "\n".join(parts)
+
+    def emit_interface_class(self, ic: SVInterfaceClass) -> str:
+        """Emit an ``interface class name [extends I, ...]; ... endclass`` block.
+
+        Bodies contain only pure-virtual prototypes; method declarations are
+        forced to ``pure virtual`` regardless of their flags, since that is the
+        only legal form inside an interface class.
+        """
+        parts: List[str] = []
+
+        for fwd in ic.forward_decls:
+            parts.append(f"typedef class {fwd};")
+
+        ext = f" extends {', '.join(ic.extends)}" if ic.extends else ""
+        parts.append(f"interface class {ic.name}{ext};")
+
+        for fd in ic.functions:
+            parts.append(self.emit_function_decl(dc.replace(fd, is_pure=True)))
+        for td in ic.tasks:
+            parts.append(self.emit_task_decl(dc.replace(td, is_pure=True)))
+
+        parts.append("endclass")
         return "\n".join(parts)
 
     def emit_interface(self, iface: SVInterface) -> str:
@@ -294,6 +322,8 @@ class SVEmitter:
             return self.emit_raw_item(construct)
         if isinstance(construct, SVClass):
             return self.emit_class(construct)
+        if isinstance(construct, SVInterfaceClass):
+            return self.emit_interface_class(construct)
         if isinstance(construct, SVInterface):
             return self.emit_interface(construct)
         if isinstance(construct, SVClassField):

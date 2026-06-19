@@ -62,6 +62,7 @@ class SVClassField:
     dtype: str = dc.field(default="logic")
     is_rand: bool = dc.field(default=False)
     is_randc: bool = dc.field(default=False)
+    is_static: bool = dc.field(default=False)
     initial_value: Optional[str] = dc.field(default=None)
 
 
@@ -134,6 +135,7 @@ class SVFunctionDecl:
     body_lines: List[str] = dc.field(default_factory=list)
     is_virtual: bool = dc.field(default=False)
     is_pure: bool = dc.field(default=False)
+    is_static: bool = dc.field(default=False)
 
 
 @dc.dataclass
@@ -287,12 +289,36 @@ class SVClass:
     name: str = dc.field()
     extends_name: Optional[str] = dc.field(default=None)
     is_virtual: bool = dc.field(default=False)
+    implements: List[str] = dc.field(default_factory=list)
     fields: List[SVClassField] = dc.field(default_factory=list)
     constraints: List[SVConstraintBlock] = dc.field(default_factory=list)
     tasks: List[SVTaskDecl] = dc.field(default_factory=list)
     functions: List[SVFunctionDecl] = dc.field(default_factory=list)
     forward_decls: List[str] = dc.field(default_factory=list)
     items: List[Any] = dc.field(default_factory=list)
+
+
+@dc.dataclass
+class SVInterfaceClass:
+    """A SystemVerilog ``interface class ... endclass`` block.
+
+    Interface classes contain only pure-virtual method *prototypes* (no
+    fields, no bodies) and may extend other interface classes.  Concrete
+    classes realise them via ``SVClass.implements``.
+
+    Args:
+        name: Interface-class name.
+        extends: Names of interface classes this one extends (``extends A, B``).
+        tasks: Pure-virtual task prototypes (emitted as ``pure virtual task``).
+        functions: Pure-virtual function prototypes.
+        forward_decls: Forward declaration names emitted before the definition.
+    """
+
+    name: str = dc.field()
+    extends: List[str] = dc.field(default_factory=list)
+    tasks: List[SVTaskDecl] = dc.field(default_factory=list)
+    functions: List[SVFunctionDecl] = dc.field(default_factory=list)
+    forward_decls: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass

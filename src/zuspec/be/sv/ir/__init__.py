@@ -48,6 +48,7 @@ from .sv import (
     SVFunctionDecl,
     SVImportDPI,
     SVInterface,
+    SVInterfaceClass,
     SVLineDirective,
     SVModuleDecl,
     SVPackage,
@@ -71,8 +72,8 @@ __all__ = [
     # SV IR
     "SVArg", "SVClass", "SVClassField", "SVConstraintBlock",
     "SVField", "SVForwardDecl", "SVFunctionDecl", "SVImportDPI",
-    "SVInterface", "SVLineDirective", "SVModuleDecl", "SVPackage",
-    "SVRawItem", "SVTaskDecl", "SVTypedefEnum", "SVTypedefStruct",
+    "SVInterface", "SVInterfaceClass", "SVLineDirective", "SVModuleDecl",
+    "SVPackage", "SVRawItem", "SVTaskDecl", "SVTypedefEnum", "SVTypedefStruct",
     "SVTypedefUnion",
     # SV emitter
     "SVEmitter",
