@@ -467,6 +467,11 @@ class SVGenerator:
         if len(lines) and lines[-1] != "":
             lines.append("")
 
+        # Structural sub-module instantiations (self-contained port->signal maps)
+        lines.extend(self._generate_module_instances(comp))
+        if len(lines) and lines[-1] != "":
+            lines.append("")
+
         # Instantiate extern components using bind map connections
         lines.extend(self._generate_extern_instances(comp))
         if len(lines) and lines[-1] != "":
@@ -870,6 +875,22 @@ class SVGenerator:
 
         return lines
     
+    def _generate_module_instances(self, comp: ir.DataTypeComponent) -> List[str]:
+        """Emit structural ``ModuleInstance`` sub-module instantiations.
+
+        Each carries its target module name and an explicit ``.port(signal)`` map
+        (no IR-type resolution), so a structural top can wire IR-emitted and
+        text-emitted modules together.
+        """
+        lines: List[str] = []
+        for inst in getattr(comp, "module_instances", []) or []:
+            lines.append(f"  {inst.module} {inst.name} (")
+            conns = [f"    .{c.port}({c.signal})" for c in inst.connections]
+            lines.append(",\n".join(conns))
+            lines.append("  );")
+            lines.append("")
+        return lines
+
     def _generate_component_instances(self, comp: ir.DataTypeComponent) -> List[str]:
         """Generate component instances for inst() fields."""
         if self._ctxt is None:
