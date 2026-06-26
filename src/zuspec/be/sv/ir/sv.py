@@ -114,6 +114,9 @@ class SVTaskDecl:
     body_lines: List[str] = dc.field(default_factory=list)
     is_virtual: bool = dc.field(default=False)
     is_pure: bool = dc.field(default=False)
+    # Structured body (SVStmt list). When set, takes precedence over body_lines
+    # and is rendered via SVStmtEmitter (plan task C3).
+    body: Optional[List[Any]] = dc.field(default=None)
 
 
 @dc.dataclass
@@ -136,6 +139,9 @@ class SVFunctionDecl:
     is_virtual: bool = dc.field(default=False)
     is_pure: bool = dc.field(default=False)
     is_static: bool = dc.field(default=False)
+    # Structured body (SVStmt list). When set, takes precedence over body_lines
+    # and is rendered via SVStmtEmitter (plan task C3).
+    body: Optional[List[Any]] = dc.field(default=None)
 
 
 @dc.dataclass

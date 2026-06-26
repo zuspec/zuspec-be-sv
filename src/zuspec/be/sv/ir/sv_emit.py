@@ -57,6 +57,19 @@ class SVEmitter:
 
     def __init__(self) -> None:
         self._rtl = RTLEmitter()
+        self._constraint = None  # lazily constructed SVConstraintEmitter
+        self._stmt = None        # lazily constructed SVStmtEmitter
+
+    def _body_lines(self, decl, indent: str) -> List[str]:
+        """Render a task/function body: structured ``body`` if present
+        (rendered via SVStmtEmitter), else the legacy ``body_lines`` strings."""
+        body = getattr(decl, "body", None)
+        if body is not None:
+            if self._stmt is None:
+                from .stmt_emit import SVStmtEmitter
+                self._stmt = SVStmtEmitter()
+            return self._stmt.emit_stmts(body, indent + "  ")
+        return [f"{indent}  {line}" for line in decl.body_lines]
 
     # ------------------------------------------------------------------
     # Field helpers (shared by struct and union)
@@ -156,8 +169,19 @@ class SVEmitter:
     # Constraint block
     # ------------------------------------------------------------------
 
-    def emit_constraint_block(self, cb: SVConstraintBlock, indent: str = "  ") -> str:
-        """Emit a ``constraint name { expr; ... }`` block."""
+    def emit_constraint_block(self, cb, indent: str = "  ") -> str:
+        """Emit a ``constraint name { ... }`` block.
+
+        Accepts either the legacy :class:`SVConstraintBlock` (pre-rendered
+        ``exprs: List[str]``) or a structured ``zuspec.ir.core.ConstraintBlock``
+        (rendered via :class:`SVConstraintEmitter`, decision D3/D4).
+        """
+        from zuspec.ir.core.constraint import ConstraintBlock as CoreConstraintBlock
+        if isinstance(cb, CoreConstraintBlock):
+            if self._constraint is None:
+                from .constraint_emit import SVConstraintEmitter
+                self._constraint = SVConstraintEmitter()
+            return self._constraint.emit_block(cb, indent=indent)
         lines: List[str] = [f"{indent}constraint {cb.name} {{"]
         for expr in cb.exprs:
             lines.append(f"{indent}  {expr};")
@@ -175,8 +199,7 @@ class SVEmitter:
             return f"{indent}pure virtual task {td.name}{args_str};"
         prefix = "virtual " if td.is_virtual else ""
         lines: List[str] = [f"{indent}{prefix}task {td.name}{args_str};"]
-        for line in td.body_lines:
-            lines.append(f"{indent}  {line}")
+        lines.extend(self._body_lines(td, indent))
         lines.append(f"{indent}endtask")
         return "\n".join(lines)
 
@@ -188,8 +211,7 @@ class SVEmitter:
         prefix = "static " if fd.is_static else ("virtual " if fd.is_virtual else "")
         ret_str = f"{fd.return_type} " if fd.return_type else ""
         lines: List[str] = [f"{indent}{prefix}function {ret_str}{fd.name}{args_str};"]
-        for line in fd.body_lines:
-            lines.append(f"{indent}  {line}")
+        lines.extend(self._body_lines(fd, indent))
         lines.append(f"{indent}endfunction")
         return "\n".join(lines)
 
@@ -329,6 +351,9 @@ class SVEmitter:
         if isinstance(construct, SVClassField):
             return self._emit_class_field(construct, indent="")
         if isinstance(construct, SVConstraintBlock):
+            return self.emit_constraint_block(construct, indent="")
+        from zuspec.ir.core.constraint import ConstraintBlock as _CoreCB
+        if isinstance(construct, _CoreCB):
             return self.emit_constraint_block(construct, indent="")
         if isinstance(construct, SVTaskDecl):
             return self.emit_task_decl(construct, indent="")
