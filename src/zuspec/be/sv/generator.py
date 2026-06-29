@@ -16,7 +16,7 @@
 """SystemVerilog code generator for transforming datamodel to SystemVerilog."""
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from zuspec.dataclasses import ir
+import zuspec.ir.core as ir
 
 
 class SVGenerator:
