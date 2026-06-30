@@ -105,6 +105,12 @@ class SVStmtEmitter:
         lines.append(f"{indent}end")
         return lines
 
+    def _emit_SVStmtDoWhile(self, st, indent) -> List[str]:
+        lines = [f"{indent}do begin"]
+        lines.extend(self._block(st.body, indent))
+        lines.append(f"{indent}end while ({self._e.emit(st.cond)});")
+        return lines
+
     def _emit_SVStmtFork(self, st, indent) -> List[str]:
         lines = [f"{indent}fork"]
         for branch in st.branches:
@@ -132,6 +138,19 @@ class SVStmtEmitter:
             head = f"{indent}void'({call} with {{"
             tail = f"{indent}}});"
         return [head] + body + [tail]
+
+    def _emit_SVStmtAssert(self, st, indent) -> List[str]:
+        cond = self._e.emit(st.cond)
+        if st.else_msg is not None:
+            return [f"{indent}assert ({cond}) else $error({self._e.emit(st.else_msg)});"]
+        return [f"{indent}assert ({cond});"]
+
+    def _emit_SVStmtCover(self, st, indent) -> List[str]:
+        cond = self._e.emit(st.cond)
+        if st.msg is not None:
+            return [f'{indent}`ZSP_TRACE("cover: {self._e.emit(st.msg)}");',
+                    f"{indent}cover ({cond});"]
+        return [f"{indent}cover ({cond});"]
 
     def _emit_SVStmtCase(self, st, indent) -> List[str]:
         lines = [f"{indent}case ({self._e.emit(st.subject)})"]

@@ -102,6 +102,13 @@ class SVStmtRepeat(SVStmt):
 
 
 @dc.dataclass
+class SVStmtDoWhile(SVStmt):
+    """``do begin ... end while (<cond>);`` — PSS ``repeat while``."""
+    cond: Any = dc.field()  # core Expr
+    body: List[SVStmt] = dc.field(default_factory=list)
+
+
+@dc.dataclass
 class SVStmtFork(SVStmt):
     """``fork <branch> ... join[_any|_none]`` — each branch is a statement list
     run in its own process (plan task C6)."""
@@ -135,3 +142,17 @@ class SVStmtCase(SVStmt):
     """``case (<subject>) <labels>: begin ... end ... endcase``."""
     subject: Any = dc.field()  # core Expr
     items: List[SVCaseItem] = dc.field(default_factory=list)
+
+
+@dc.dataclass
+class SVStmtAssert(SVStmt):
+    """``assert (<cond>) [else $error(<else_msg>)];`` — PSS ``assert``."""
+    cond: Any = dc.field()  # core Expr
+    else_msg: Optional[Any] = dc.field(default=None)  # core Expr
+
+
+@dc.dataclass
+class SVStmtCover(SVStmt):
+    """``cover (<cond>);`` — PSS ``cover``, with an optional ``ZSP_TRACE`` line."""
+    cond: Any = dc.field()  # core Expr
+    msg: Optional[Any] = dc.field(default=None)  # core Expr

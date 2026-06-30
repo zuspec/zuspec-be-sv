@@ -93,3 +93,114 @@ def test_translate_stmts_procedural():
         "  tick();",
         "end",
     ]
+
+
+# --- WS1 increment 1: control-flow parity with legacy lower_stmts ---------- #
+
+def _emit(stmts):
+    return SVStmtEmitter().emit_stmts(translate_stmts(stmts), indent="")
+
+
+def test_translate_stmt_for_as_foreach():
+    # StmtFor projects onto foreach(iter[target]) (matches legacy lower_stmts).
+    s = ir.StmtFor(
+        target=ir.ExprRefLocal(name="i"), iter=ir.ExprRefLocal(name="data"),
+        body=[ir.StmtAssign(targets=[ir.ExprSubscript(
+            value=ir.ExprRefLocal(name="data"), slice=ir.ExprRefLocal(name="i"))],
+            value=ir.ExprConstant(value=0))])
+    assert _emit([s]) == [
+        "foreach (data[i]) begin",
+        "  data[i] = 0;",
+        "end",
+    ]
+
+
+def test_translate_repeat_while_as_do_while():
+    s = ir.StmtRepeatWhile(
+        condition=ir.ExprBin(lhs=ir.ExprRefLocal(name="done"), op=ir.BinOp.Eq,
+                             rhs=ir.ExprConstant(value=0)),
+        body=[ir.StmtExpr(expr=ir.ExprCall(
+            func=ir.ExprRefUnresolved(name="step"), args=[]))])
+    assert _emit([s]) == [
+        "do begin",
+        "  step();",
+        "end while ((done == 0));",
+    ]
+
+
+def test_translate_match_as_case():
+    s = ir.StmtMatch(
+        subject=ir.ExprRefLocal(name="kind"),
+        cases=[
+            ir.StmtMatchCase(
+                pattern=ir.PatternValue(value=ir.ExprConstant(value=0)),
+                body=[ir.StmtAssign(targets=[ir.ExprRefLocal(name="x")],
+                                    value=ir.ExprConstant(value=1))]),
+            # PatternOr -> comma-joined labels
+            ir.StmtMatchCase(
+                pattern=ir.PatternOr(patterns=[
+                    ir.PatternValue(value=ir.ExprConstant(value=1)),
+                    ir.PatternValue(value=ir.ExprConstant(value=2))]),
+                body=[ir.StmtAssign(targets=[ir.ExprRefLocal(name="x")],
+                                    value=ir.ExprConstant(value=2))]),
+            # wildcard -> default
+            ir.StmtMatchCase(
+                pattern=ir.PatternAs(pattern=None),
+                body=[ir.StmtAssign(targets=[ir.ExprRefLocal(name="x")],
+                                    value=ir.ExprConstant(value=9))]),
+        ])
+    assert _emit([s]) == [
+        "case (kind)",
+        "  0: begin",
+        "    x = 1;",
+        "  end",
+        "  1, 2: begin",
+        "    x = 2;",
+        "  end",
+        "  default: begin",
+        "    x = 9;",
+        "  end",
+        "endcase",
+    ]
+
+
+# --- WS1 increment 2: diagnostics (assert / cover / raise / yield) --------- #
+
+def _cmp(lhs, op, rhs):
+    return ir.ExprBin(lhs=ir.ExprRefLocal(name=lhs), op=op, rhs=ir.ExprConstant(value=rhs))
+
+
+def test_translate_assert():
+    assert _emit([ir.StmtAssert(test=_cmp("x", ir.BinOp.Gt, 0))]) == [
+        "assert ((x > 0));",
+    ]
+    assert _emit([ir.StmtAssert(test=_cmp("x", ir.BinOp.Gt, 0),
+                                msg=ir.ExprConstant(value="x must be positive"))]) == [
+        'assert ((x > 0)) else $error("x must be positive");',
+    ]
+
+
+def test_translate_cover():
+    assert _emit([ir.StmtCover(test=_cmp("hit", ir.BinOp.Eq, 1))]) == [
+        "cover ((hit == 1));",
+    ]
+    assert _emit([ir.StmtCover(test=_cmp("hit", ir.BinOp.Eq, 1),
+                               msg=ir.ExprConstant(value="hit_seen"))]) == [
+        '`ZSP_TRACE("cover: "hit_seen"");',
+        "cover ((hit == 1));",
+    ]
+
+
+def test_translate_raise():
+    assert _emit([ir.StmtRaise(exc=ir.ExprConstant(value="boom"))]) == [
+        '$fatal(1, "boom");',
+    ]
+    assert _emit([ir.StmtRaise()]) == [
+        '$fatal(1, "error");',
+    ]
+
+
+def test_translate_yield_is_comment():
+    assert _emit([ir.StmtYield()]) == [
+        "// yield (no-op in SV class execution)",
+    ]

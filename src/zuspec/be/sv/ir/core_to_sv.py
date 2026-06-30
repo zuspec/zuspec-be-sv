@@ -44,6 +44,26 @@ def _ident(expr) -> str:
     return "i"
 
 
+def _pattern_labels(pattern) -> List:
+    """Reduce a core ``Pattern`` to a list of SV case-label exprs.
+
+    An empty list denotes the ``default`` arm. ``PatternValue`` yields its value
+    expr; ``PatternOr`` flattens its sub-patterns; ``PatternAs`` (wildcard /
+    binding) and unknown patterns fall through to ``default``.
+    """
+    from zuspec.ir.core import stmt as st
+    if isinstance(pattern, st.PatternValue):
+        return [pattern.value]
+    if isinstance(pattern, st.PatternOr):
+        labels: List = []
+        for p in pattern.patterns:
+            labels.extend(_pattern_labels(p))
+        return labels
+    if isinstance(pattern, st.PatternAs) and pattern.pattern is not None:
+        return _pattern_labels(pattern.pattern)
+    return []  # default
+
+
 def translate_stmts(stmts) -> List[svs.SVStmt]:
     """Translate a list of core procedural ``Stmt`` nodes to ``SVStmt`` nodes.
 
@@ -74,8 +94,36 @@ def translate_stmts(stmts) -> List[svs.SVStmt]:
             out.append(svs.SVStmtForeach(
                 array=s.iter, index_var=_ident(s.target),
                 body=translate_stmts(s.body or [])))
+        elif isinstance(s, st.StmtFor):
+            # PSS/IR StmtFor projects onto a foreach over the iterable, matching
+            # the legacy lower_stmts mapping.
+            out.append(svs.SVStmtForeach(
+                array=s.iter, index_var=_ident(s.target),
+                body=translate_stmts(s.body or [])))
         elif isinstance(s, st.StmtRepeat):
             out.append(svs.SVStmtRepeat(count=s.count, body=translate_stmts(s.body or [])))
+        elif isinstance(s, st.StmtRepeatWhile):
+            out.append(svs.SVStmtDoWhile(
+                cond=s.condition, body=translate_stmts(s.body or [])))
+        elif isinstance(s, st.StmtMatch):
+            items = []
+            for case in s.cases:
+                items.append(svs.SVCaseItem(
+                    labels=_pattern_labels(case.pattern),
+                    body=translate_stmts(case.body or [])))
+            out.append(svs.SVStmtCase(subject=s.subject, items=items))
+        elif isinstance(s, st.StmtAssert):
+            out.append(svs.SVStmtAssert(cond=s.test, else_msg=s.msg))
+        elif isinstance(s, st.StmtCover):
+            out.append(svs.SVStmtCover(cond=s.test, msg=s.msg))
+        elif isinstance(s, st.StmtRaise):
+            # PSS raise -> $fatal(1, <exc>); default message when no exc.
+            msg = s.exc if s.exc is not None else _e.ExprConstant(value="error")
+            out.append(svs.SVStmtExpr(expr=_e.ExprCall(
+                func=_e.ExprRefUnresolved(name="$fatal"),
+                args=[_e.ExprConstant(value=1), msg])))
+        elif isinstance(s, st.StmtYield):
+            out.append(svs.SVStmtComment(text="yield (no-op in SV class execution)"))
         elif isinstance(s, st.StmtBreak):
             out.append(svs.SVStmtRaw(text="break;"))
         elif isinstance(s, st.StmtContinue):
