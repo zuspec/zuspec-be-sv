@@ -40,6 +40,9 @@ class SVField:
     dtype: Optional[str] = dc.field(default=None)
     is_rand: bool = dc.field(default=False)
     is_randc: bool = dc.field(default=False)
+    fields: List["SVField"] = dc.field(default_factory=list)  # when non-empty, this
+    # field is an anonymous nested ``struct packed { <fields> } <name>;`` (takes
+    # precedence over ``width``/``dtype``).
 
 
 @dc.dataclass
@@ -207,6 +210,41 @@ class SVTypedefUnion:
     name: str = dc.field()
     fields: List[SVField] = dc.field(default_factory=list)
     packed: bool = dc.field(default=True)
+
+
+@dc.dataclass
+class SVConcurrentAssert:
+    """A concurrent SystemVerilog assertion (SVA) statement.
+
+    Emits ``[<label>: ]<kind> property (@(<clock>)[ disable iff (<dis>)]
+    [<antecedent> |->|=> ]<expr>);`` — the standard clocked assert/assume/cover-
+    property form used for FSM and handshake verification (e.g. a handshake
+    Irrevocable check ``vld && !rdy |=> vld``, or a valid-state-encoding check).
+
+    Unlike the *procedural* ``SVStmtAssert``/``SVStmtCover`` (immediate assertions
+    inside a task/always), this is a standalone concurrent assertion suitable for
+    module scope and formal tools.
+
+    Args:
+        expr: Core ``ir.core`` Expr — the property body (the consequent when
+            ``antecedent`` is set).
+        clock: Clock event string, e.g. ``"posedge clk"``.
+        disable_iff: Optional core Expr rendered as ``disable iff (<expr>)``
+            (typically the reset condition).
+        antecedent: Optional core Expr; when set, emits ``<antecedent> |-> <expr>``
+            (or ``|=>`` when ``overlap`` is ``False``).
+        overlap: ``True`` → ``|->`` (same cycle); ``False`` → ``|=>`` (next cycle).
+        kind: ``"assert"`` | ``"assume"`` | ``"cover"``.
+        label: Optional SVA label (emitted as ``<label>: …``).
+    """
+
+    expr: Any = dc.field()
+    clock: str = dc.field(default="posedge clk")
+    disable_iff: Optional[Any] = dc.field(default=None)
+    antecedent: Optional[Any] = dc.field(default=None)
+    overlap: bool = dc.field(default=True)
+    kind: str = dc.field(default="assert")
+    label: Optional[str] = dc.field(default=None)
 
 
 @dc.dataclass

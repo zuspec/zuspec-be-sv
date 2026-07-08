@@ -29,6 +29,11 @@ class RTLPort:
     name: str = dc.field()
     width: int = dc.field(default=1)
     direction: PortDirection = dc.field(default=PortDirection.INPUT)
+    net: str = dc.field(default="wire")  # "wire" | "logic" — use "logic" for
+    # procedurally-driven (registered) ports; default keeps existing output.
+    dtype: Optional[str] = dc.field(default=None)  # explicit type (e.g. a struct
+    # typedef name ``pkg__in_t``); when set, overrides ``net``/``width`` for
+    # emission — the port is declared ``<dir> <dtype> <name>``.
 
 
 @dc.dataclass
@@ -40,11 +45,50 @@ class RTLWire:
         width: Bit-width.
         dtype: Optional typedef type name (e.g. ``"fetch_pld_t"``).
             When set, overrides the ``logic [width-1:0]`` default declaration.
+        lint_off: Verilator warning names to wrap this declaration in
+            ``/* verilator lint_off X */`` … ``/* verilator lint_on X */``
+            (e.g. ``["UNUSEDSIGNAL"]`` for a register that may be write-only
+            in some configurations — matching the legacy register block).
     """
 
     name: str = dc.field()
     width: int = dc.field(default=1)
     dtype: Optional[str] = dc.field(default=None)
+    net: str = dc.field(default="wire")  # "wire" | "logic"; ignored when dtype set
+    lint_off: List[str] = dc.field(default_factory=list)
+
+
+@dc.dataclass
+class RTLMemory:
+    """A memory / RAM array declaration ``logic [width-1:0] name [0:depth-1];``.
+
+    Args:
+        name: Array name.
+        width: Element bit-width.
+        depth: Number of entries.
+        dtype: Optional element typedef name (overrides ``logic [width-1:0]``).
+    """
+
+    name: str = dc.field()
+    width: int = dc.field(default=1)
+    depth: int = dc.field(default=1)
+    dtype: Optional[str] = dc.field(default=None)
+
+
+@dc.dataclass
+class RTLParameter:
+    """A module ``parameter`` (header) or ``localparam`` (body).
+
+    Args:
+        name: Parameter name.
+        value: Integer default/value.
+        local: ``True`` → ``localparam`` in the module body; ``False`` →
+            ``parameter`` in the module header ``#( … )`` list.
+    """
+
+    name: str = dc.field()
+    value: int = dc.field(default=0)
+    local: bool = dc.field(default=False)
 
 
 @dc.dataclass
@@ -104,7 +148,9 @@ class RTLModule:
 
     name: str = dc.field()
     ports: List[RTLPort] = dc.field(default_factory=list)
+    params: List["RTLParameter"] = dc.field(default_factory=list)
     wires: List[RTLWire] = dc.field(default_factory=list)
+    memories: List["RTLMemory"] = dc.field(default_factory=list)
     assigns: List[RTLAssign] = dc.field(default_factory=list)
     always_blocks: List[RTLAlways] = dc.field(default_factory=list)
     instances: List[RTLInstance] = dc.field(default_factory=list)

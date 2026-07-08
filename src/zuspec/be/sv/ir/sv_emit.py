@@ -29,6 +29,7 @@ from zuspec.be.sv.ir.sv import (
     SVArg,
     SVClass,
     SVClassField,
+    SVConcurrentAssert,
     SVConstraintBlock,
     SVField,
     SVForwardDecl,
@@ -59,6 +60,14 @@ class SVEmitter:
         self._rtl = RTLEmitter()
         self._constraint = None  # lazily constructed SVConstraintEmitter
         self._stmt = None        # lazily constructed SVStmtEmitter
+        self._ee = None          # lazily constructed SVExprEmitter
+
+    def _expr_emitter(self):
+        """Lazily build (and cache) an ``SVExprEmitter`` for core-Expr rendering."""
+        if self._ee is None:
+            from .expr_emit import SVExprEmitter
+            self._ee = SVExprEmitter()
+        return self._ee
 
     def _body_lines(self, decl, indent: str) -> List[str]:
         """Render a task/function body: structured ``body`` if present
@@ -76,7 +85,14 @@ class SVEmitter:
     # ------------------------------------------------------------------
 
     def _emit_field(self, field: SVField, indent: str = "  ") -> str:
-        """Emit one struct/union field declaration line."""
+        """Emit one struct/union field declaration line(s)."""
+        if getattr(field, "fields", None):
+            # Anonymous nested packed struct: struct packed { … } name;
+            lines = [f"{indent}struct packed {{"]
+            for sub in field.fields:
+                lines.append(self._emit_field(sub, indent + "  "))
+            lines.append(f"{indent}}} {field.name};")
+            return "\n".join(lines)
         if field.dtype:
             return f"{indent}{field.dtype} {field.name};"
         if field.width > 1:
@@ -330,6 +346,17 @@ class SVEmitter:
     # Dispatch
     # ------------------------------------------------------------------
 
+    def emit_concurrent_assert(self, a: SVConcurrentAssert) -> str:
+        """Emit a concurrent SVA statement (assert/assume/cover property)."""
+        e = self._expr_emitter()
+        dis = f" disable iff ({e.emit(a.disable_iff)})" if a.disable_iff is not None else ""
+        body = e.emit(a.expr)
+        if a.antecedent is not None:
+            arrow = "|->" if a.overlap else "|=>"
+            body = f"{e.emit(a.antecedent)} {arrow} {body}"
+        stmt = f"{a.kind} property (@({a.clock}){dis} {body});"
+        return f"{a.label}: {stmt}" if a.label else stmt
+
     def emit_one(self, construct: Any) -> str:
         """Serialise one SV IR or RTL IR node."""
         if isinstance(construct, SVTypedefStruct):
@@ -338,6 +365,8 @@ class SVEmitter:
             return self.emit_typedef_enum(construct)
         if isinstance(construct, SVTypedefUnion):
             return self.emit_typedef_union(construct)
+        if isinstance(construct, SVConcurrentAssert):
+            return self.emit_concurrent_assert(construct)
         if isinstance(construct, SVPackage):
             return self.emit_package(construct)
         if isinstance(construct, SVRawItem):
