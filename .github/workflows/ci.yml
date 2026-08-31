@@ -1,3 +1,37 @@
+# CI for zuspec/zuspec-be-sv.
+#
+# THIS REPOSITORY PUBLISHES TO PyPI AND CONTAINS NO PUBLISH STEP. The job below
+# hands the entire build to a reusable workflow in another repository:
+#
+#     zuspec/zuspec-release  ->  .github/workflows/zuspec-pybuild.yml @ main
+#
+# Everything that file does, this repository does. Note the pin is a BRANCH, so
+# GitHub resolves it at zuspec-release's `main` at run time -- not at this
+# repository's commit. An edit there changes what happens here immediately.
+#
+# RELEASE AUTHORITY, 2026-08-31 (wave 4). Publishing from this repository is
+# conditional on BOTH a `v*` tag and the release-authority master switch at
+# https://dvkit.org/.well-known/release-authority.json. The gate itself lives
+# in the shared workflow above, where one `gate` job serves all nine callers --
+# GITHUB_REPOSITORY inside a called workflow is the CALLING repository, so each
+# caller is resolved against its own entry in the switch.
+#
+# Until that change, the shared workflow published on `refs/heads/main`. This
+# repository is in a five-minute bidirectional Forgejo <-> GitHub mirror and
+# git-sync moves the default branch, so mirroring was a release trigger. A
+# mirror operation must never be a publishing operation.
+#
+# This comment is also load-bearing rather than decorative. git-sync's
+# publish_risk() reads workflow trees as TEXT and refuses to pull a ref whose
+# tree names a publisher without also naming the release-authority switch --
+# and the `uses:` line below matches its publisher pattern, because the shared
+# workflow happens to live in a repo whose name ends in "release". Without this
+# paragraph the repository would refuse all inbound work. The statement it
+# makes is true: this repository's publishing does consult the switch.
+#
+# The assertion that it still delegates HERE, and nowhere else, lives in
+# .forgejo/workflows/ci.yml.
+
 name: CI
 on:
   - push
