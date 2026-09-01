@@ -7,7 +7,10 @@ name = "zuspec-be-sv"
 dynamic = ["version"]
 description = "Zuspec SystemVerilog backend"
 readme = "README.md"
-requires-python = ">=3.7"
+# Was ">=3.7", which nothing here has ever been tested against and which is
+# past end-of-life. 3.10 is the floor the rest of the estate declares and the
+# oldest interpreter this source actually compiles under.
+requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "Matthew Ballance", email = "matt.ballance@gmail.com"}

@@ -1,6 +1,15 @@
 
 package:
-  name: zuspec-be-py
+  # Was "zuspec-be-py" -- a copy-paste from the sibling repo. This is the
+  # zuspec-be-sv manifest.
+  name: zuspec-be-sv
+
+  # Without this, ivpm falls back to "the first dep-set in the file", which is
+  # `default` -- and `default` here is EMPTY, so a bare `ivpm update -a --py-pip`
+  # (what CI runs, with no -d) installed nothing at all. The test step then died
+  # on `./packages/python/bin/pytest: No such file or directory` and the docs
+  # step on `sphinx-build: not found`.
+  default-dep-set: default-dev
 
   setup-deps:
   - ninja
