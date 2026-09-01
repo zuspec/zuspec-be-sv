@@ -28,6 +28,13 @@ package:
       url: https://github.com/zuspec/zuspec-ir-core.git
     - name: pytest
       src: pypi
+    # test_fsm_to_sv.py, test_mmr_to_sv.py and test_protocol_to_sv.py import
+    # zuspec.synth.{ir,sprtl} and it was never declared, so all three failed
+    # collection with ModuleNotFoundError. Declaring it rather than excluding
+    # them keeps three working test files gating CI -- they were not broken,
+    # they were merely missing a dependency that exists.
+    - name: zuspec-synth
+      url: https://github.com/zuspec/zuspec-synth.git
 #    - name: pyhdl-if
 ##      url: https://github.com/fvutils/pyhdl-if.git
     - name: pytest-dfm
