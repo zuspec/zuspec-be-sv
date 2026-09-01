@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #****************************************************************************
-BASE="0.0.1"
+BASE="0.1.0"
 SUFFIX=""
 VERSION="%s%s" % (BASE, SUFFIX)
+version=VERSION
