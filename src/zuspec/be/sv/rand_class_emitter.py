@@ -19,8 +19,153 @@ Translates ``@zdc.dataclass`` definitions into SV ``class``/``endclass``
 declarations with ``rand`` field declarations and ``constraint`` blocks.
 No benchmark-specific knowledge (DPI timing, module harness) lives here.
 """
+import ast
+import copy
+import inspect
 import math
 from typing import Any, Dict, List, Optional, Tuple
+
+
+class _ConstraintExpander:
+    """Flatten one constraint method's body into parsed constraint exprs.
+
+    ``ConstraintParser`` handles a body made only of ``assert``/``if``/
+    expression statements and silently skips anything else, so a constraint
+    built with a loop -- ``for j in range(i + 1, _N): assert vi != getattr(
+    self, f"v{j}")`` -- came back with no expressions at all, and the emitted
+    class was unconstrained. Free names were emitted verbatim too, so a
+    module constant such as ``_ADDR_TOP`` reached SV as an undeclared
+    identifier.
+
+    This expands the body first, against the method's own constant
+    environment (module globals, closure variables, loop indices):
+
+      * ``for <name> in <iterable>`` with an iterable computable from that
+        environment (``range(...)``, a tuple/list of constants) is unrolled;
+      * ``<name> = <expr>`` binds a local, substituted where it is used;
+      * ``getattr(self, <str>)`` with a computable name becomes ``self.<str>``;
+      * a name bound to an integer constant becomes that constant.
+
+    Each resulting ``assert``/``if``/expression statement is then handed to
+    ``ConstraintParser`` exactly as before. Anything else raises
+    ``NotImplementedError``: an SV class missing a constraint is worse than
+    no SV class.
+    """
+
+    _EVAL_BUILTINS = {"range": range, "len": len, "min": min, "max": max,
+                      "abs": abs}
+
+    def __init__(self, method, parser, cls_name: str):
+        self._parser = parser
+        self._where = "%s.%s" % (cls_name, getattr(method, "__name__", "?"))
+        fn = inspect.unwrap(method)
+        env: Dict[str, Any] = {}
+        try:
+            cv = inspect.getclosurevars(fn)
+            env.update(cv.globals)
+            env.update(cv.nonlocals)
+        except (TypeError, ValueError):
+            pass
+        g = getattr(fn, "__globals__", {})
+        # Only integer constants are substituted; any other name is left for
+        # the emitter to reject rather than turned into something plausible.
+        self._env = {k: v for k, v in {**g, **env}.items() if _is_int(v)}
+
+    def expand(self, func_def: ast.FunctionDef) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        self._stmts(func_def.body, {}, out)
+        return out
+
+    # -- statements ------------------------------------------------------
+
+    def _stmts(self, body, local: Dict[str, ast.expr], out: list) -> None:
+        for stmt in body:
+            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) \
+                    and isinstance(stmt.value.value, str):
+                continue                                    # docstring
+            if isinstance(stmt, ast.Pass):
+                continue
+            if isinstance(stmt, ast.Assert):
+                out.append(self._parse(stmt.test, local))
+            elif isinstance(stmt, ast.Expr):
+                out.append(self._parse(stmt.value, local))
+            elif isinstance(stmt, ast.If):
+                if stmt.orelse:
+                    raise NotImplementedError(
+                        "%s: else branches in constraint if-statements are "
+                        "not supported" % self._where)
+                cons: list = []
+                self._stmts(stmt.body, dict(local), cons)
+                out.append({"type": "implies",
+                            "antecedent": self._parse(stmt.test, local),
+                            "consequent": cons})
+            elif isinstance(stmt, ast.For) and isinstance(stmt.target, ast.Name) \
+                    and not stmt.orelse:
+                for v in self._eval(stmt.iter, local):
+                    if not _is_int(v):
+                        raise NotImplementedError(
+                            "%s: loop over non-integer value %r" % (self._where, v))
+                    inner = dict(local)
+                    inner[stmt.target.id] = ast.Constant(v)
+                    self._stmts(stmt.body, inner, out)
+            elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 \
+                    and isinstance(stmt.targets[0], ast.Name):
+                local[stmt.targets[0].id] = self._subst(stmt.value, local)
+            else:
+                raise NotImplementedError(
+                    "%s: cannot express %s statement (line %s) in SV"
+                    % (self._where, type(stmt).__name__,
+                       getattr(stmt, "lineno", "?")))
+
+    # -- expressions -----------------------------------------------------
+
+    def _parse(self, node: ast.expr, local) -> Dict[str, Any]:
+        return self._parser.parse_expr(self._subst(node, local))
+
+    def _subst(self, node: ast.expr, local) -> ast.expr:
+        expander = self
+
+        class _T(ast.NodeTransformer):
+            def visit_Name(self, n):
+                if n.id in local:
+                    return copy.deepcopy(local[n.id])
+                if n.id != "self" and n.id in expander._env:
+                    return ast.copy_location(
+                        ast.Constant(int(expander._env[n.id])), n)
+                return n
+
+            def visit_Call(self, n):
+                self.generic_visit(n)
+                if isinstance(n.func, ast.Name) and n.func.id == "getattr" \
+                        and len(n.args) == 2 and isinstance(n.args[0], ast.Name) \
+                        and n.args[0].id == "self":
+                    attr = expander._eval(n.args[1], {})
+                    if not isinstance(attr, str):
+                        raise NotImplementedError(
+                            "%s: getattr name %r is not a string"
+                            % (expander._where, attr))
+                    return ast.copy_location(
+                        ast.Attribute(ast.Name("self", ast.Load()), attr,
+                                      ast.Load()), n)
+                return n
+
+        return _T().visit(copy.deepcopy(node))
+
+    def _eval(self, node: ast.expr, local):
+        """Evaluate a compile-time expression (loop bounds, attribute names)."""
+        node = self._subst(node, local)
+        expr = ast.fix_missing_locations(ast.Expression(node))
+        try:
+            return eval(compile(expr, "<constraint %s>" % self._where, "eval"),
+                        {"__builtins__": self._EVAL_BUILTINS}, dict(self._env))
+        except Exception as e:
+            raise NotImplementedError(
+                "%s: cannot evaluate %s at generation time (%s)"
+                % (self._where, ast.unparse(node), e)) from e
+
+
+def _is_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
 
 
 class SVRandClassEmitter:
@@ -99,7 +244,8 @@ class SVRandClassEmitter:
 
         # User-defined constraint blocks
         for c in constraints:
-            exprs = c.get('exprs', [])
+            exprs = _ConstraintExpander(c['method'], cp, cls.__name__).expand(
+                c['ast'])
             if not exprs:
                 continue
             lines.append("")
@@ -174,7 +320,11 @@ class SVRandClassEmitter:
             attr = node.get('attr', '')
             return attr
         elif t == 'name':
-            return node.get('id', '')
+            # Constants were substituted by _ConstraintExpander; a name still
+            # here would be an undeclared identifier in SV.
+            raise ValueError(
+                "SVRandClassEmitter: cannot resolve name '%s' to a field or "
+                "an integer constant" % node.get('id', ''))
         elif t == 'bin_op':
             op = self._BINOP_MAP.get(node['op'], node['op'])
             left = self._emit_expr(node['left'])
@@ -192,7 +342,13 @@ class SVRandClassEmitter:
             return f"({op}{self._emit_expr(node['operand'])})"
         elif t == 'implies':
             ante = self._emit_expr(node['antecedent'])
-            cons = self._emit_expr(node['consequent'])
+            # implies(a, b) carries one consequent; an if-statement carries
+            # the list of its body's constraints.
+            c = node['consequent']
+            parts = c if isinstance(c, list) else [c]
+            if not parts:
+                return "1"
+            cons = " && ".join(f"({self._emit_expr(p)})" for p in parts)
             return f"({ante}) -> ({cons})"
         else:
             raise ValueError(f"SVRandClassEmitter: unsupported IR node type '{t}'")
