@@ -884,7 +884,12 @@ class SVGenerator:
         """
         lines: List[str] = []
         for inst in getattr(comp, "module_instances", []) or []:
-            lines.append(f"  {inst.module} {inst.name} (")
+            params = getattr(inst, "parameters", None) or {}
+            if params:
+                ps = ", ".join(f".{k}({v})" for k, v in params.items())
+                lines.append(f"  {inst.module} #({ps}) {inst.name} (")
+            else:
+                lines.append(f"  {inst.module} {inst.name} (")
             conns = [f"    .{c.port}({c.signal})" for c in inst.connections]
             lines.append(",\n".join(conns))
             lines.append("  );")
@@ -1514,6 +1519,18 @@ class SVGenerator:
         elif isinstance(expr, ir.ExprSigned):
             return f"$signed({self._generate_expr(expr.value, comp)})"
 
+        elif isinstance(expr, ir.ExprConcat):
+            parts = [self._generate_expr(v, comp, subst) for v in expr.values]
+            return "{" + ", ".join(parts) + "}"
+
+        elif isinstance(expr, ir.ExprReplicate):
+            return f"{{{expr.count}{{{self._generate_expr(expr.value, comp, subst)}}}}}"
+
+        elif isinstance(expr, ir.ExprPartSelect):
+            value = self._generate_expr(expr.value, comp, subst)
+            base = self._generate_expr(expr.base, comp, subst)
+            return f"{value}[{base} +: {expr.width}]"
+
         elif isinstance(expr, ir.ExprCall):
             # any([a, b, c]) → (a | b | c)
             if (isinstance(expr.func, ir.ExprRefUnresolved) and
@@ -1622,6 +1639,7 @@ class SVGenerator:
             ir.BinOp.Mod: "%",
             ir.BinOp.LShift: "<<",
             ir.BinOp.RShift: ">>",
+            ir.BinOp.ARShift: ">>>",
             ir.BinOp.BitOr: "|",
             ir.BinOp.BitXor: "^",
             ir.BinOp.BitAnd: "&",
@@ -1688,6 +1706,9 @@ class SVGenerator:
             ir.UnaryOp.Invert: "~",
             ir.UnaryOp.UAdd: "+",
             ir.UnaryOp.USub: "-",
+            ir.UnaryOp.AndReduce: "&",
+            ir.UnaryOp.OrReduce: "|",
+            ir.UnaryOp.XorReduce: "^",
         }
         return op_map.get(op, "?")
     

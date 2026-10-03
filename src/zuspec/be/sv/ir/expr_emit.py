@@ -30,7 +30,7 @@ _BINOP = {
     e.BinOp.Add: "+", e.BinOp.Sub: "-", e.BinOp.Mult: "*", e.BinOp.Div: "/",
     e.BinOp.Mod: "%", e.BinOp.FloorDiv: "/", e.BinOp.Exp: "**",
     e.BinOp.BitAnd: "&", e.BinOp.BitOr: "|", e.BinOp.BitXor: "^",
-    e.BinOp.LShift: "<<", e.BinOp.RShift: ">>",
+    e.BinOp.LShift: "<<", e.BinOp.RShift: ">>", e.BinOp.ARShift: ">>>",
     e.BinOp.Eq: "==", e.BinOp.NotEq: "!=", e.BinOp.Lt: "<", e.BinOp.LtE: "<=",
     e.BinOp.Gt: ">", e.BinOp.GtE: ">=", e.BinOp.And: "&&", e.BinOp.Or: "||",
 }
@@ -38,6 +38,7 @@ _BINOP = {
 _UNARYOP = {
     e.UnaryOp.Not: "!", e.UnaryOp.Invert: "~", e.UnaryOp.USub: "-",
     e.UnaryOp.UAdd: "+",
+    e.UnaryOp.AndReduce: "&", e.UnaryOp.OrReduce: "|", e.UnaryOp.XorReduce: "^",
 }
 
 _CMPOP = {
@@ -249,6 +250,15 @@ class SVExprEmitter:
 
     def _emit_ExprCbit(self, x) -> str:
         return f"({self.emit(x.value)} ? 1'b1 : 1'b0)"
+
+    def _emit_ExprConcat(self, x) -> str:
+        return "{" + ", ".join(self.emit(v) for v in x.values) + "}"
+
+    def _emit_ExprReplicate(self, x) -> str:
+        return f"{{{x.count}{{{self.emit(x.value)}}}}}"
+
+    def _emit_ExprPartSelect(self, x) -> str:
+        return f"{self.emit(x.value)}[{self.emit(x.base)} +: {x.width}]"
 
     def _emit_ExprZext(self, x) -> str:
         return f"{self.emit(x.value)}[{x.bits - 1}:0]"

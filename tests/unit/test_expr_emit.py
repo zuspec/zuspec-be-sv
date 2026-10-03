@@ -147,3 +147,18 @@ def test_unknown_node_raises():
         pass
     with pytest.raises(NotImplementedError):
         E().emit(Bogus())
+
+
+# ------------------------------------------------- static-subset additions
+
+def test_concat_replicate_part_select():
+    a, b = _self_attr("a"), _self_attr("b")
+    assert E().emit(e.ExprConcat(values=[a, b])) == "{a, b}"
+    assert E().emit(e.ExprReplicate(count=3, value=a)) == "{3{a}}"
+    assert E().emit(e.ExprPartSelect(value=a, base=b, width=4)) == "a[b +: 4]"
+
+
+def test_arshift_and_reductions():
+    a = _self_attr("a")
+    assert E().emit(e.ExprBin(lhs=a, op=e.BinOp.ARShift, rhs=_c(2))) == "(a >>> 2)"
+    assert E().emit(e.ExprUnary(op=e.UnaryOp.XorReduce, operand=a)) == "^(a)"
