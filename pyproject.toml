@@ -17,10 +17,14 @@ authors = [
 ]
 
 dependencies = [
-    "zuspec-ir-core",
+    "zuspec-ir-core>=0.2.0",
 ]
 
 [project.optional-dependencies]
+# passes.PipelineToSVPass / SVEmitPass run zuspec-synth.
+synth = [
+    "zuspec-synth",
+]
 dev = [
     "pytest>=6.0",
     "pytest-dfm",
@@ -36,8 +40,17 @@ Repository = "https://github.com/zuspec/zuspec-be-sv"
 zuspec_be_sv = "zuspec.be.sv.cli_plugin:SVBackendPlugin"
 
 [tool.setuptools]
-packages = ["zuspec.be.sv", "zuspec.be.sv.ir", "zuspec.be.sv.passes"]
 package-dir = {"" = "src"}
+
+# Auto-discovery, as in zuspec-be-py: a hand-kept list is how a subpackage
+# goes missing from a wheel. namespaces = true because zuspec/ and zuspec/be/
+# are PEP 420 namespace dirs.
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"zuspec.be.sv" = ["share/sv/*.sv", "share/sv/*.svh"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
