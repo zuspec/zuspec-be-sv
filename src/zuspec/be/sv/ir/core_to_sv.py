@@ -64,6 +64,9 @@ def _pattern_labels(pattern) -> List:
     return []  # default
 
 
+_JOIN = {"all": "join", "any": "join_any", "none": "join_none"}
+
+
 def translate_stmts(stmts) -> List[svs.SVStmt]:
     """Translate a list of core procedural ``Stmt`` nodes to ``SVStmt`` nodes.
 
@@ -77,7 +80,8 @@ def translate_stmts(stmts) -> List[svs.SVStmt]:
             out.append(svs.SVStmtExpr(expr=s.expr))
         elif isinstance(s, st.StmtAssign):
             tgt = s.targets[0] if getattr(s, "targets", None) else None
-            out.append(svs.SVStmtAssign(lhs=tgt, rhs=s.value))
+            nb = bool((getattr(s, "pragmas", None) or {}).get("nonblocking"))
+            out.append(svs.SVStmtAssign(lhs=tgt, rhs=s.value, op="<=" if nb else "="))
         elif isinstance(s, st.StmtAugAssign):
             out.append(svs.SVStmtAssign(lhs=s.target, rhs=s.value,
                                         op=_AUGOP.get(s.op, "=")))
@@ -89,7 +93,12 @@ def translate_stmts(stmts) -> List[svs.SVStmt]:
                 then_body=translate_stmts(s.body or []),
                 else_body=translate_stmts(s.orelse or [])))
         elif isinstance(s, st.StmtWhile):
-            out.append(svs.SVStmtWhile(cond=s.test, body=translate_stmts(s.body or [])))
+            t = s.test
+            if (isinstance(t, _e.ExprConstant) and not isinstance(t.value, str)
+                    and t.value not in (None, 0, False)):
+                out.append(svs.SVStmtForever(body=translate_stmts(s.body or [])))
+            else:
+                out.append(svs.SVStmtWhile(cond=s.test, body=translate_stmts(s.body or [])))
         elif isinstance(s, st.StmtForeach):
             out.append(svs.SVStmtForeach(
                 array=s.iter, index_var=_ident(s.target),
@@ -130,6 +139,10 @@ def translate_stmts(stmts) -> List[svs.SVStmt]:
             out.append(svs.SVStmtRaw(text="continue;"))
         elif isinstance(s, st.StmtPass):
             continue
+        elif isinstance(s, st.StmtFork):
+            out.append(svs.SVStmtFork(
+                branches=[translate_stmts(b) for b in s.branches],
+                join=_JOIN.get(s.join, s.join)))
         else:
             raise NotImplementedError(
                 f"translate_stmts: unsupported statement {type(s).__name__}")

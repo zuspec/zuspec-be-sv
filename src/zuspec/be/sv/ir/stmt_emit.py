@@ -99,6 +99,12 @@ class SVStmtEmitter:
         lines.append(f"{indent}end")
         return lines
 
+    def _emit_SVStmtForever(self, st, indent) -> List[str]:
+        lines = [f"{indent}forever begin"]
+        lines.extend(self._block(st.body, indent))
+        lines.append(f"{indent}end")
+        return lines
+
     def _emit_SVStmtRepeat(self, st, indent) -> List[str]:
         lines = [f"{indent}repeat ({self._e.emit(st.count)}) begin"]
         lines.extend(self._block(st.body, indent))

@@ -103,6 +103,9 @@ class SVExprEmitter:
         if isinstance(v, bool):
             return "1'b1" if v else "1'b0"
         if isinstance(v, int):
+            w = getattr(x, "width", 0) or 0
+            if w > 0 and v >= 0:          # sized: <w>'h<hex>
+                return f"{w}'h{v:x}"
             return str(v)
         if isinstance(v, str):
             return f'"{v}"'

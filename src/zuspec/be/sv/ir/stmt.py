@@ -95,6 +95,12 @@ class SVStmtWhile(SVStmt):
 
 
 @dc.dataclass
+class SVStmtForever(SVStmt):
+    """``forever begin ... end`` (a core ``while`` whose test is constant true)."""
+    body: List[SVStmt] = dc.field(default_factory=list)
+
+
+@dc.dataclass
 class SVStmtRepeat(SVStmt):
     """``repeat (<count>) begin ... end``."""
     count: Any = dc.field()  # core Expr
