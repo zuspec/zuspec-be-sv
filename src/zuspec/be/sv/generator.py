@@ -258,8 +258,10 @@ class SVGenerator:
     
     def _generate_component(self, comp: ir.DataTypeComponent) -> str:
         """Generate SystemVerilog code for a component."""
+        if self._is_fw_sync(comp):
+            return self._generate_fw_sync_component(comp)
         all_code = []
-        
+
         # Add source file header comment if debug mode is enabled
         if self.debug_annotations and comp.loc:
             all_code.append(f"// Generated from: {comp.loc.file}:{comp.loc.line}")
@@ -576,6 +578,122 @@ class SVGenerator:
         
         all_code.append("\n".join(lines))
         return "\n".join(all_code)
+
+    # -- fw-hdl synchronous components -------------------------------------
+    #
+    # fw-hdl's sync front end (``fw.hdl.fe.elab.sync``) marks every field a
+    # process drives with ``Field.drive``.  Such a component is emitted as
+    # synthesizable SystemVerilog: ``step()`` as ``always_ff``, ``comb()`` as
+    # ``always_comb``.  An output with ``reset_force`` V is driven by
+    # ``assign pin = reset ? V : pin_q`` from a register ``pin_q``.  When the
+    # sync body is ``if (reset) R else B``, registers that R does not assign
+    # are written from a second ``always_ff`` with no reset term (B with the
+    # reset registers pruned), so they synthesize without a reset or enable.
+
+    @staticmethod
+    def _is_fw_sync(comp: ir.DataTypeComponent) -> bool:
+        return any(getattr(f, 'drive', None) is not None for f in comp.fields)
+
+    @staticmethod
+    def _self_field(expr) -> Optional[int]:
+        if isinstance(expr, ir.ExprRefField) and isinstance(expr.base, ir.TypeExprRefSelf):
+            return expr.index
+        return None
+
+    def _assigned_fields(self, stmts: list) -> set:
+        out = set()
+        for s in stmts:
+            if isinstance(s, ir.StmtAssign):
+                out.update(i for i in map(self._self_field, s.targets) if i is not None)
+            elif isinstance(s, ir.StmtIf):
+                out |= self._assigned_fields(s.body) | self._assigned_fields(s.orelse)
+        return out
+
+    def _prune_assigns(self, stmts: list, keep) -> list:
+        """``stmts`` with only the assignments whose field ``keep(index)`` accepts; empty ifs dropped."""
+        out = []
+        for s in stmts:
+            if isinstance(s, ir.StmtAssign):
+                if all(keep(self._self_field(t)) for t in s.targets):
+                    out.append(s)
+            elif isinstance(s, ir.StmtIf):
+                body = self._prune_assigns(s.body, keep)
+                orelse = self._prune_assigns(s.orelse, keep)
+                if body:
+                    out.append(ir.StmtIf(test=s.test, body=body, orelse=orelse))
+                elif orelse:
+                    out.append(ir.StmtIf(test=ir.ExprUnary(op=ir.UnaryOp.Not, operand=s.test),
+                                         body=orelse))
+            else:
+                out.append(s)
+        return out
+
+    def _split_reset(self, body: list, reset_idx: Optional[int]):
+        """Split ``[if (reset) R else B]`` into (reset block, no-reset block)."""
+        if (reset_idx is None or len(body) != 1 or not isinstance(body[0], ir.StmtIf)
+                or self._self_field(body[0].test) != reset_idx or not body[0].orelse):
+            return body, []
+        nrst = self._assigned_fields(body[0].orelse) - self._assigned_fields(body[0].body)
+        if not nrst:
+            return body, []
+        return (self._prune_assigns(body, lambda i: i not in nrst),
+                self._prune_assigns(body[0].orelse, lambda i: i in nrst))
+
+    def _generate_fw_sync_component(self, comp: ir.DataTypeComponent) -> str:
+        fields = comp.fields
+        name = self._sanitize_sv_name(comp.name)
+        reset_idx = clock = None
+        for fn in comp.sync_processes:
+            clock = self._self_field(fn.metadata.get('clock'))
+            reset_idx = self._self_field(fn.metadata.get('reset'))
+        self._field_rename = {i: f"{f.name}_q" for i, f in enumerate(fields)
+                              if isinstance(f, ir.FieldInOut) and f.is_out
+                              and f.reset_force is not None}
+        try:
+            lines = [f"module {name}("]
+            ports = [f"  {'output' if f.is_out else 'input'} {self._get_sv_type(f.datatype)} {f.name}"
+                     for f in fields if isinstance(f, ir.FieldInOut)]
+            lines.append(",\n".join(ports))
+            lines.append(");")
+            decls = [f"  {self._get_sv_type(f.datatype)} {f.name};" for f in fields
+                     if not isinstance(f, ir.FieldInOut) and isinstance(f.datatype, ir.DataTypeInt)]
+            decls += [f"  {self._get_sv_type(fields[i].datatype)} {q};"
+                      for i, q in self._field_rename.items()]
+            if decls:
+                lines.append("")
+                lines.extend(decls)
+            lines.append("")
+            for fn in comp.sync_processes:
+                main, nrst = self._split_reset(fn.body, reset_idx)
+                clk = fields[clock].name
+                lines.extend(self._emit_process_header(fn))
+                lines.append(f"  always_ff @(posedge {clk}) begin")
+                lines.extend(self._generate_stmt_list(main, comp, indent=2))
+                lines.append("  end")
+                lines.append("")
+                if nrst:
+                    lines.append(f"  // Not reset")
+                    lines.append(f"  always_ff @(posedge {clk}) begin")
+                    lines.extend(self._generate_stmt_list(nrst, comp, indent=2))
+                    lines.append("  end")
+                    lines.append("")
+            for fn in comp.comb_processes:
+                lines.extend(self._emit_process_header(fn))
+                lines.append("  always_comb begin")
+                lines.extend(self._generate_stmt_list(fn.body, comp, indent=2, blocking=True))
+                lines.append("  end")
+                lines.append("")
+            for i, q in self._field_rename.items():
+                f = fields[i]
+                bits = f.datatype.bits if f.datatype.bits > 0 else 1
+                lines.append(f"  assign {f.name} = {fields[reset_idx].name} ? "
+                             f"{bits}'d{int(f.reset_force)} : {q};")
+            if self._field_rename:
+                lines.append("")
+            lines.append("endmodule")
+            return "\n".join(lines) + "\n"
+        finally:
+            self._field_rename = None
 
     def _get_sv_type(self, dtype: ir.DataType) -> str:
         """Convert datamodel type to SystemVerilog type."""
@@ -1421,6 +1539,9 @@ class SVGenerator:
             # Look up field by index
             if isinstance(expr.base, ir.TypeExprRefSelf):
                 # Direct field reference: self.field
+                rename = getattr(self, '_field_rename', None)
+                if rename and expr.index in rename:
+                    return rename[expr.index]
                 if expr.index < len(comp.fields):
                     return comp.fields[expr.index].name
                 return f"field_{expr.index}"
