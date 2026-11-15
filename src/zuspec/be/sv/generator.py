@@ -17,15 +17,26 @@
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import zuspec.ir.core as ir
+import zuspec.ir.core.expr as ir_expr
+from . import sync_param
+from . import structural
 
 
 class SVGenerator:
     """Main SystemVerilog code generator from datamodel."""
 
-    def __init__(self, output_dir: Path, debug_annotations: bool = False, method_tags: bool = True):
+    def __init__(self, output_dir: Path, debug_annotations: bool = False, method_tags: bool = True,
+                 types_package: Optional[str] = None):
+        """``types_package`` names the package that declares the packed
+        structs and enums structural components use (see
+        :class:`~zuspec.be.sv.structural.ValueTypes`); by default
+        ``<top>_types_pkg``, ``<top>`` the one flat structural component no
+        other instantiates (``zuspec_types_pkg`` if there is not one)."""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._ctxt: ir.Context = None
+        self._types: Optional[structural.ValueTypes] = None
+        self.types_package = types_package
         self.debug_annotations = debug_annotations
         self.method_tags = method_tags
 
@@ -35,17 +46,7 @@ class SVGenerator:
         Replaces dots, angle brackets, and other invalid characters with underscores.
         E.g., 'test_smoke.<locals>.Counter' -> 'test_smoke__locals__Counter'
         """
-        import re
-        # Replace dots and angle brackets with double underscores
-        name = name.replace('.', '__')
-        name = name.replace('<', '__')
-        name = name.replace('>', '__')
-        # Replace any other invalid characters with single underscore
-        name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
-        # Ensure it doesn't start with a digit
-        if name and name[0].isdigit():
-            name = '_' + name
-        return name
+        return structural.sv_module_name(name)
 
     def _resolve_bundle_type(self, field: ir.Field, comp: ir.DataTypeComponent) -> Optional[ir.DataTypeStruct]:
         """Resolve a bundle field to its struct type definition.
@@ -137,7 +138,25 @@ class SVGenerator:
         """Generate SystemVerilog code for all components in context."""
         self._ctxt = ctxt
         files = []
-        
+
+        # The packed structs and enums structural components use: one
+        # generated package, first in the file list.
+        pkg_name = self.types_package or structural.default_types_package(ctxt.type_m)
+        self._types = structural.ValueTypes(ctxt.type_m, pkg_name)
+        text = self._types.package()
+        if text is not None:
+            output_file = self.output_dir / f"{pkg_name}.sv"
+            output_file.write_text(text)
+            files.append(output_file)
+
+        # Packages of the packed structs that parameterized sync components use.
+        claimed = self._types.keys
+        sync_types = {k: t for k, t in ctxt.type_m.items() if k not in claimed}
+        for pkg, text in sync_param.packages(sync_types).items():
+            output_file = self.output_dir / f"{pkg}.sv"
+            output_file.write_text(text)
+            files.append(output_file)
+
         for name, dtype in ctxt.type_m.items():
             if isinstance(dtype, ir.DataTypeExtern):
                 continue
@@ -258,8 +277,15 @@ class SVGenerator:
     
     def _generate_component(self, comp: ir.DataTypeComponent) -> str:
         """Generate SystemVerilog code for a component."""
+        type_m = self._ctxt.type_m if self._ctxt is not None else {}
+        if getattr(comp, "flat_structural", False) and structural.is_flat_structural(comp):
+            return structural.StructuralEmitter(comp, getattr(self, "_types", None)).module()
+        if sync_param.is_sync_param(comp, type_m):
+            return sync_param.SyncParamEmitter(comp, type_m).module()
         if self._is_fw_sync(comp):
             return self._generate_fw_sync_component(comp)
+        if structural.is_flat_structural(comp):
+            return structural.StructuralEmitter(comp, getattr(self, "_types", None)).module()
         all_code = []
 
         # Add source file header comment if debug mode is enabled
@@ -1533,6 +1559,15 @@ class SVGenerator:
 
         return lines
 
+    def _generate_operand(self, expr: ir.Expr, comp: ir.DataTypeComponent) -> str:
+        """``expr`` as the operand of an operator: a comparison or an
+        ``&&``/``||`` is parenthesized (it binds looser than arithmetic and
+        unary operators; ``a + (b && c)``, ``!(a == b)``)."""
+        s = self._generate_expr(expr, comp)
+        if isinstance(expr, (ir.ExprCompare, ir.ExprBool)):
+            return f"({s})"
+        return s
+
     def _generate_expr(self, expr: ir.Expr, comp: ir.DataTypeComponent, subst: dict = None) -> str:
         """Generate SystemVerilog expression."""
         if isinstance(expr, ir.ExprRefField):
@@ -1610,7 +1645,7 @@ class SVGenerator:
                 idx_expr = self._generate_expr(expr.slice, comp)
                 return f"{array_expr}[{idx_expr}]"
 
-        elif isinstance(expr, ir.ExprIfExp):
+        elif isinstance(expr, (ir.ExprIfExp, ir_expr.ExprIfExp)):
             # Python  : body if test else orelse
             # SV      : test ? body : orelse
             test_s   = self._generate_expr(expr.test,   comp)
@@ -1710,17 +1745,17 @@ class SVGenerator:
                 x_expr = self._generate_expr(expr.lhs.args[0], comp)
                 right = self._generate_expr(expr.rhs, comp)
                 return f"$signed({x_expr}) >>> {right}"
-            left = self._generate_expr(expr.lhs, comp)
-            right = self._generate_expr(expr.rhs, comp)
+            left = self._generate_operand(expr.lhs, comp)
+            right = self._generate_operand(expr.rhs, comp)
             op = self._get_sv_binop(expr.op)
             return f"({left} {op} {right})"
         
         elif isinstance(expr, ir.ExprCompare):
             # Handle comparison expressions
-            result = self._generate_expr(expr.left, comp)
+            result = self._generate_operand(expr.left, comp)
             for i, (op, comparator) in enumerate(zip(expr.ops, expr.comparators)):
                 cmp_op = self._get_sv_cmpop(op)
-                cmp_expr = self._generate_expr(comparator, comp)
+                cmp_expr = self._generate_operand(comparator, comp)
                 result = f"{result} {cmp_op} {cmp_expr}"
             return result
         
@@ -1735,7 +1770,7 @@ class SVGenerator:
         elif isinstance(expr, ir.ExprUnary):
             # Handle unary expressions (not, -, +, ~)
             op = self._get_sv_unaryop(expr.op)
-            operand = self._generate_expr(expr.operand, comp)
+            operand = self._generate_operand(expr.operand, comp)
             return f"{op}{operand}"
         
         elif isinstance(expr, ir.ExprRefParam):
