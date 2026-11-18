@@ -242,6 +242,16 @@ def test_four_state_int_is_logic():
     assert sv_type_str(ir.DataTypeInt(bits=8, signed=False)) == "bit [7:0]"
 
 
+def test_sync_param_four_state_32_is_not_int():
+    # F8a: a 4-state 32-bit signed type (SV ``integer``) keeps its states in
+    # the parameterized RTL; only a 2-state one becomes ``int``.
+    from zuspec.be.sv.sync_param import _base
+    assert _base(ir.DataTypeInt(bits=32, signed=True)) == "int"
+    assert _base(ir.DataTypeInt(bits=32, signed=True, four_state=True)) == \
+        "logic signed [31:0]"
+    assert _base(ir.DataTypeInt(bits=4, signed=False, four_state=True)) == "logic [3:0]"
+
+
 def test_pure_method_in_virtual_class():
     """G8: ``metadata["pure"]`` gives a ``pure virtual`` prototype in a class."""
     fn = ir.Function(name="sprint", args=_args(), body=[],

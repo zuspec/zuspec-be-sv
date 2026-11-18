@@ -44,9 +44,11 @@ import zuspec.ir.core.expr as ir_expr
 _BIN = {ir.BinOp.Add: "+", ir.BinOp.Sub: "-", ir.BinOp.Mult: "*", ir.BinOp.Div: "/",
         ir.BinOp.Mod: "%", ir.BinOp.LShift: "<<", ir.BinOp.RShift: ">>",
         ir.BinOp.ARShift: ">>>",
-        ir.BinOp.BitOr: "|", ir.BinOp.BitXor: "^", ir.BinOp.BitAnd: "&"}
+        ir.BinOp.BitOr: "|", ir.BinOp.BitXor: "^", ir.BinOp.BitAnd: "&",
+        ir.BinOp.CaseEq: "===", ir.BinOp.CaseNotEq: "!=="}
 _CMP = {ir.CmpOp.Eq: "==", ir.CmpOp.NotEq: "!=", ir.CmpOp.Lt: "<", ir.CmpOp.LtE: "<=",
-        ir.CmpOp.Gt: ">", ir.CmpOp.GtE: ">="}
+        ir.CmpOp.Gt: ">", ir.CmpOp.GtE: ">=",
+        ir.CmpOp.CaseEq: "===", ir.CmpOp.CaseNotEq: "!=="}
 _UN = {ir.UnaryOp.Not: "!", ir.UnaryOp.Invert: "~", ir.UnaryOp.USub: "-",
        ir.UnaryOp.UAdd: "+"}
 _SYS = {"clog2": "$clog2", "bits": "$bits"}
@@ -98,7 +100,8 @@ def _base(dt: ir.DataType) -> str:
     if isinstance(dt, ir.DataTypeRef):
         return dt.ref_name
     if isinstance(dt, ir.DataTypeInt):
-        if dt.bits == 32 and dt.signed and getattr(dt, "width_expr", None) is None:
+        if dt.bits == 32 and dt.signed and getattr(dt, "width_expr", None) is None \
+                and getattr(dt, "four_state", None) is not True:
             return "int"
         w = _width(dt)
         return "logic" + (" signed" if dt.signed else "") + (f" {w}" if w else "")

@@ -1799,6 +1799,8 @@ class SVGenerator:
             ir.BinOp.BitOr: "|",
             ir.BinOp.BitXor: "^",
             ir.BinOp.BitAnd: "&",
+            ir.BinOp.CaseEq: "===",
+            ir.BinOp.CaseNotEq: "!==",
         }
         return op_map.get(op, "?")
 
@@ -1828,6 +1830,8 @@ class SVGenerator:
             ir.CmpOp.LtE: "<=",
             ir.CmpOp.Gt: ">",
             ir.CmpOp.GtE: ">=",
+            ir.CmpOp.CaseEq: "===",
+            ir.CmpOp.CaseNotEq: "!==",
         }
         return op_map.get(op, "?")
 

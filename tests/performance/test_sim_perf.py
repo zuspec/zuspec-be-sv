@@ -78,6 +78,7 @@ def benchmark_simulation(name, component_class, testbench, cycles, tmpdir, sim):
         name="sim_run",
         needs=[sim_img])
     
+    runner.builder = builder
     runner.add_listener(TaskListenerLog().event)
     out = asyncio.run(runner.run(sim_run))
     

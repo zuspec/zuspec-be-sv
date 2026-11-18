@@ -162,3 +162,25 @@ def test_arshift_and_reductions():
     a = _self_attr("a")
     assert E().emit(e.ExprBin(lhs=a, op=e.BinOp.ARShift, rhs=_c(2))) == "(a >>> 2)"
     assert E().emit(e.ExprUnary(op=e.UnaryOp.XorReduce, operand=a)) == "^(a)"
+
+
+def test_case_equality():
+    """G7: ``===``/``!==`` so an X or Z bit does not compare equal."""
+    a, b = _self_attr("a"), _self_attr("b")
+    assert E().emit(e.ExprBin(lhs=a, op=e.BinOp.CaseEq, rhs=b)) == "(a === b)"
+    assert E().emit(e.ExprBin(lhs=a, op=e.BinOp.CaseNotEq, rhs=b)) == "(a !== b)"
+    assert E().emit(e.ExprCompare(left=a, ops=[e.CmpOp.CaseEq],
+                                  comparators=[b])) == "(a === b)"
+    assert E().emit(e.ExprCompare(left=a, ops=[e.CmpOp.CaseNotEq],
+                                  comparators=[b])) == "(a !== b)"
+
+
+def test_struct_literal_default():
+    """G4: a struct's all-zero value, and named members with a default."""
+    assert E().emit(e.ExprStructLiteral(default=_c(0))) == "'{default: 0}"
+    lit = e.ExprStructLiteral(fields=[e.ExprStructField(name="addr", value=_c(4))],
+                              default=_c(0))
+    assert E().emit(lit) == "'{addr: 4, default: 0}"
+    assert E().emit(e.ExprStructLiteral(fields=[
+        e.ExprStructField(name="a", value=_c(1)),
+        e.ExprStructField(name="b", value=_c(2))])) == "'{a: 1, b: 2}"

@@ -215,6 +215,7 @@ endmodule
         name="sim_run",
         needs=[sim_img])
     
+    runner.builder = builder
     runner.add_listener(TaskListenerLog().event)
     out = asyncio.run(runner.run(sim_run))
     

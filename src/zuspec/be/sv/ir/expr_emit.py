@@ -33,6 +33,7 @@ _BINOP = {
     e.BinOp.LShift: "<<", e.BinOp.RShift: ">>", e.BinOp.ARShift: ">>>",
     e.BinOp.Eq: "==", e.BinOp.NotEq: "!=", e.BinOp.Lt: "<", e.BinOp.LtE: "<=",
     e.BinOp.Gt: ">", e.BinOp.GtE: ">=", e.BinOp.And: "&&", e.BinOp.Or: "||",
+    e.BinOp.CaseEq: "===", e.BinOp.CaseNotEq: "!==",
 }
 
 _UNARYOP = {
@@ -44,6 +45,7 @@ _UNARYOP = {
 _CMPOP = {
     e.CmpOp.Eq: "==", e.CmpOp.NotEq: "!=", e.CmpOp.Lt: "<", e.CmpOp.LtE: "<=",
     e.CmpOp.Gt: ">", e.CmpOp.GtE: ">=", e.CmpOp.Is: "==", e.CmpOp.IsNot: "!=",
+    e.CmpOp.CaseEq: "===", e.CmpOp.CaseNotEq: "!==",
 }
 
 # Self-reference collapses: ``self.addr`` -> ``addr`` in SV class scope.
@@ -259,6 +261,13 @@ class SVExprEmitter:
 
     def _emit_ExprCbit(self, x) -> str:
         return f"({self.emit(x.value)} ? 1'b1 : 1'b0)"
+
+    def _emit_ExprStructLiteral(self, x) -> str:
+        # SV assignment pattern: ``'{a: 1, default: 0}``.
+        items = [f"{f.name}: {self.emit(f.value)}" for f in x.fields]
+        if x.default is not None:
+            items.append(f"default: {self.emit(x.default)}")
+        return "'{" + ", ".join(items) + "}"
 
     def _emit_ExprConcat(self, x) -> str:
         return "{" + ", ".join(self.emit(v) for v in x.values) + "}"
