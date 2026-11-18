@@ -153,6 +153,30 @@ class Transactor(zdc.Component):
 
 Generates SystemVerilog interface with task.
 
+### Declarations from the IR
+
+`zuspec.be.sv.ir.core_to_sv` translates IR types straight to SV declarations,
+for use with `SVEmitter`:
+
+- `translate_decl(dtype)`: a `DataTypeProtocol` to an `interface class`; a
+  class or `DataTypeParameterized` to a `class` with its parameters,
+  `extends`, `implements` and methods.
+- `translate_typedef(dtype)`: a packed struct, an enum (`bit` based unless
+  4-state) or a named int/ref to its `typedef`.
+- `translate_package(name, types, decls)`: a `package` of typedefs (in the
+  given order) and declarations; classes are ordered so bases and interfaces
+  come first, with `typedef class` for any cycle.
+
+```python
+from zuspec.be.sv.ir.core_to_sv import translate_package
+from zuspec.be.sv.ir.sv_emit import SVEmitter
+
+sv = SVEmitter().emit_one(translate_package("my_pkg", types, decls))
+```
+
+zuspec-fe-sv's `SVMapper` gives `types` and `decls` for an SV -> IR -> SV
+round trip.
+
 ## Requirements
 
 - Python >= 3.7

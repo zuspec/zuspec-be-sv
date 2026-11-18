@@ -119,7 +119,7 @@ class SVEmitter:
             max_val = max(v for _, v in td.members)
             width = max(1, math.ceil(math.log2(max_val + 2)) if max_val >= 0 else 1)
         wspec = f"[{width - 1}:0]" if width > 1 else ""
-        lines: List[str] = [f"typedef enum logic{wspec} {{"]
+        lines: List[str] = [f"typedef enum {td.base}{wspec} {{"]
         for i, (name, val) in enumerate(td.members):
             comma = "" if i == len(td.members) - 1 else ","
             lines.append(f"  {name} = {width}'d{val}{comma}")
@@ -142,6 +142,9 @@ class SVEmitter:
     def emit_package(self, pkg: SVPackage) -> str:
         """Emit a ``package … endpackage`` block."""
         lines: List[str] = [f"package {pkg.name};"]
+        if pkg.imports:
+            lines.append("")
+            lines.extend(f"  import {i}::*;" for i in pkg.imports)
         for item in pkg.items:
             lines.append("")
             for subline in self.emit_one(item).splitlines():
@@ -166,8 +169,21 @@ class SVEmitter:
         """Format a task/function argument list."""
         parts: List[str] = []
         for a in args:
-            parts.append(f"{a.direction} {a.dtype} {a.name}")
+            unp = f" {a.unpacked}" if a.unpacked else ""
+            dflt = (f" = {self._expr_emitter().emit(a.default)}"
+                    if a.default is not None else "")
+            parts.append(f"{a.direction} {a.dtype} {a.name}{unp}{dflt}")
         return ", ".join(parts)
+
+    @staticmethod
+    def _attr_prefix(attributes: List[str]) -> str:
+        """``(* a, b *) `` for a non-empty attribute list, else ``""``."""
+        return f"(* {', '.join(attributes)} *) " if attributes else ""
+
+    @staticmethod
+    def _param_list(params: List[str]) -> str:
+        """`` #(p, ...)`` for a non-empty parameter list, else ``""``."""
+        return f" #({', '.join(params)})" if params else ""
 
     def _emit_class_field(self, cf: SVClassField, indent: str = "  ") -> str:
         """Emit one class field declaration line."""
@@ -179,7 +195,9 @@ class SVEmitter:
         elif cf.is_rand:
             qual += "rand "
         init = f" = {cf.initial_value}" if cf.initial_value is not None else ""
-        return f"{indent}{qual}{cf.dtype} {cf.name}{init};"
+        unp = f" {cf.unpacked}" if cf.unpacked else ""
+        attr = self._attr_prefix(cf.attributes)
+        return f"{indent}{attr}{qual}{cf.dtype} {cf.name}{unp}{init};"
 
     # ------------------------------------------------------------------
     # Constraint block
@@ -211,10 +229,11 @@ class SVEmitter:
     def emit_task_decl(self, td: SVTaskDecl, indent: str = "  ") -> str:
         """Emit a task declaration."""
         args_str = f"({self._emit_arg_list(td.args)})" if td.args else "()"
+        attr = self._attr_prefix(td.attributes)
         if td.is_pure:
-            return f"{indent}pure virtual task {td.name}{args_str};"
+            return f"{indent}{attr}pure virtual task {td.name}{args_str};"
         prefix = "virtual " if td.is_virtual else ""
-        lines: List[str] = [f"{indent}{prefix}task {td.name}{args_str};"]
+        lines: List[str] = [f"{indent}{attr}{prefix}task {td.name}{args_str};"]
         lines.extend(self._body_lines(td, indent))
         lines.append(f"{indent}endtask")
         return "\n".join(lines)
@@ -222,11 +241,12 @@ class SVEmitter:
     def emit_function_decl(self, fd: SVFunctionDecl, indent: str = "  ") -> str:
         """Emit a function declaration."""
         args_str = f"({self._emit_arg_list(fd.args)})" if fd.args else "()"
+        attr = self._attr_prefix(fd.attributes)
         if fd.is_pure:
-            return f"{indent}pure virtual function {fd.return_type} {fd.name}{args_str};"
+            return f"{indent}{attr}pure virtual function {fd.return_type} {fd.name}{args_str};"
         prefix = "static " if fd.is_static else ("virtual " if fd.is_virtual else "")
         ret_str = f"{fd.return_type} " if fd.return_type else ""
-        lines: List[str] = [f"{indent}{prefix}function {ret_str}{fd.name}{args_str};"]
+        lines: List[str] = [f"{indent}{attr}{prefix}function {ret_str}{fd.name}{args_str};"]
         lines.extend(self._body_lines(fd, indent))
         lines.append(f"{indent}endfunction")
         return "\n".join(lines)
@@ -247,7 +267,7 @@ class SVEmitter:
         kw = "virtual class" if cls.is_virtual else "class"
         ext = f" extends {cls.extends_name}" if cls.extends_name else ""
         impl = f" implements {', '.join(cls.implements)}" if cls.implements else ""
-        parts.append(f"{kw} {cls.name}{ext}{impl};")
+        parts.append(f"{kw} {cls.name}{self._param_list(cls.params)}{ext}{impl};")
 
         # Fields
         for cf in cls.fields:
@@ -289,7 +309,7 @@ class SVEmitter:
             parts.append(f"typedef class {fwd};")
 
         ext = f" extends {', '.join(ic.extends)}" if ic.extends else ""
-        parts.append(f"interface class {ic.name}{ext};")
+        parts.append(f"interface class {ic.name}{self._param_list(ic.params)}{ext};")
 
         for fd in ic.functions:
             parts.append(self.emit_function_decl(dc.replace(fd, is_pure=True)))

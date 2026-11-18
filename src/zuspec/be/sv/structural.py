@@ -44,6 +44,10 @@ carry X and Z in simulation, whatever the source type. A type as a value
 parameter's type and a member of a generated struct follow
 ``DataTypeInt.four_state``: ``bit`` when False, ``logic`` when True or
 unstated.
+
+Process blocks (fw-hdl layer 2). A component's ``proc_blocks``, their
+domains resolved to its nets, follow the instances as ``always_ff`` and
+``always_comb`` blocks (:mod:`.proc_emit`).
 """
 from __future__ import annotations
 
@@ -53,6 +57,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Union
 
 import zuspec.ir.core as ir
 
+from .proc_emit import proc_block_lines
 from .sync_param import _cexpr
 
 __all__ = [
@@ -426,6 +431,7 @@ class StructuralEmitter:
         for g in getattr(c, "generates", None) or []:
             lines.extend(self._generate(g, "  "))
             lines.append("")
+        lines.extend(proc_block_lines(c))
         lines.append("endmodule")
         return "\n".join(lines) + "\n"
 

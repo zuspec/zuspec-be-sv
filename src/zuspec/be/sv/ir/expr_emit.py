@@ -116,6 +116,12 @@ class SVExprEmitter:
     def _emit_ExprNull(self, x) -> str:
         return "null"
 
+    def _emit_ExprNew(self, x) -> str:
+        # The handle's declared type is constructed: ``new`` or ``new(args)``.
+        if not x.args:
+            return "new"
+        return f"new({', '.join(self.emit(a) for a in x.args)})"
+
     def _emit_TypeExprRefSelf(self, x) -> str:
         return self._self_ref
 

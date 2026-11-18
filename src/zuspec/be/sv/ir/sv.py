@@ -67,6 +67,11 @@ class SVClassField:
     is_randc: bool = dc.field(default=False)
     is_static: bool = dc.field(default=False)
     initial_value: Optional[str] = dc.field(default=None)
+    #: Unpacked dimensions, emitted after the name (``[$]``, ``[4]``).
+    unpacked: str = dc.field(default="")
+    #: SV attribute instances (``fw_opt``, ``fw_opt = 2``), emitted as
+    #: ``(* ... *)`` before the declaration.
+    attributes: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass
@@ -82,6 +87,10 @@ class SVArg:
     name: str = dc.field()
     dtype: str = dc.field(default="logic")
     direction: str = dc.field(default="input")
+    #: Unpacked dimensions, emitted after the name (``[$]``, ``[4]``).
+    unpacked: str = dc.field(default="")
+    #: Default value (a core ``Expr``), emitted as `` = <default>``.
+    default: Optional[Any] = dc.field(default=None)
 
 
 @dc.dataclass
@@ -120,6 +129,8 @@ class SVTaskDecl:
     # Structured body (SVStmt list). When set, takes precedence over body_lines
     # and is rendered via SVStmtEmitter (plan task C3).
     body: Optional[List[Any]] = dc.field(default=None)
+    #: SV attribute instances, emitted as ``(* ... *)`` before the declaration.
+    attributes: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass
@@ -145,6 +156,8 @@ class SVFunctionDecl:
     # Structured body (SVStmt list). When set, takes precedence over body_lines
     # and is rendered via SVStmtEmitter (plan task C3).
     body: Optional[List[Any]] = dc.field(default=None)
+    #: SV attribute instances, emitted as ``(* ... *)`` before the declaration.
+    attributes: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass
@@ -190,11 +203,13 @@ class SVTypedefEnum:
         members: List of ``(member_name, value)`` pairs in declaration order.
         width: Bit-width of the underlying ``logic`` type.  ``0`` means the
             emitter infers the minimum width from the member values.
+        base: Base type keyword, ``logic`` (default) or ``bit``.
     """
 
     name: str = dc.field()
     members: List[Tuple[str, int]] = dc.field(default_factory=list)
     width: int = dc.field(default=0)
+    base: str = dc.field(default="logic")
 
 
 @dc.dataclass
@@ -292,10 +307,12 @@ class SVPackage:
         name: Package name.
         items: Ordered list of package-scope items (typedefs, parameters,
             functions, ``SVRawItem`` escapes, etc.).
+        imports: Packages imported (``import x::*;``) ahead of the items.
     """
 
     name: str = dc.field()
     items: List[Any] = dc.field(default_factory=list)
+    imports: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass
@@ -334,6 +351,9 @@ class SVClass:
     extends_name: Optional[str] = dc.field(default=None)
     is_virtual: bool = dc.field(default=False)
     implements: List[str] = dc.field(default_factory=list)
+    #: Class parameters, each a rendered declaration (``type T = int``,
+    #: ``int W = 8``); emitted as ``#(...)`` after the name.
+    params: List[str] = dc.field(default_factory=list)
     fields: List[SVClassField] = dc.field(default_factory=list)
     constraints: List[SVConstraintBlock] = dc.field(default_factory=list)
     tasks: List[SVTaskDecl] = dc.field(default_factory=list)
@@ -360,6 +380,8 @@ class SVInterfaceClass:
 
     name: str = dc.field()
     extends: List[str] = dc.field(default_factory=list)
+    #: Parameters, as for :attr:`SVClass.params`.
+    params: List[str] = dc.field(default_factory=list)
     tasks: List[SVTaskDecl] = dc.field(default_factory=list)
     functions: List[SVFunctionDecl] = dc.field(default_factory=list)
     forward_decls: List[str] = dc.field(default_factory=list)
