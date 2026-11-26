@@ -15,6 +15,13 @@ a pass has resolved their domains to the module's nets (``clock_net``,
   statements see a write, and the register takes the copy at the end.
 - a comb block as ``always_comb`` with blocking assignments.
 
+A block's locals (``StmtAnnAssign``, wherever they are in the body) are
+declared at the top of its ``always`` block, renamed when a field has the
+name, and assigned with blocking assignments where the body declares them:
+the initializer, else the type's default (``'0``), so each evaluation
+starts from it as the class code's automatic locals do. ``ExprCast`` to a
+``DataType`` is ``T'(v)`` (``N'(v)`` for a vector).
+
 A field reference (``ExprRefField`` of ``self``) is the net of the field
 with that index in the component's ``fields``; ``ExprInReset`` is its
 reset net, inverted when active low. The writers are the ones the front
@@ -33,10 +40,40 @@ from .sync_param import _BIN, _CMP, _IFEXP, _UN, _base, _decl
 class ProcEmitter:
     """Writes the ``proc_blocks`` of one component."""
 
-    def __init__(self, comp: ir.DataTypeComponent):
+    def __init__(self, comp: ir.DataTypeComponent, decl=None, type_name=None):
         self.comp = comp
         self.fields = comp.fields
         self.local = {}     # state field -> its block-local copy
+        self.vars = {}      # block local -> its name in the always block
+        # ``decl(dt, name)``: a declaration; ``type_name(dt)``: a named
+        # type's SV name (the module's types package)
+        self.decl = decl or _decl
+        self.type_name = type_name or _base
+
+    def _locals(self, b: ir.ProcBlock, ind: str, names: set) -> List[str]:
+        """Declares the block's locals (``self.vars``)."""
+        out: List[str] = []
+        self.vars = {}
+
+        def walk(body):
+            for s in body:
+                if isinstance(s, ir.StmtAnnAssign) and isinstance(s.target, ir.ExprRefLocal):
+                    n = s.target.name
+                    if n in self.vars:
+                        continue
+                    if s.ir_type is None:
+                        raise ValueError(f"block {b.name!r}: local {n!r} has no type")
+                    v = n
+                    while v in names:
+                        v += "_"
+                    names.add(v)
+                    self.vars[n] = v
+                    out.append(f"{ind}{self.decl(s.ir_type, v)};")
+                for k in ("body", "orelse"):
+                    walk(getattr(s, k, None) or [])
+        walk(b.reset_body)
+        walk(b.body)
+        return out
 
     def lines(self, ind: str = "  ") -> List[str]:
         out: List[str] = []
@@ -46,11 +83,16 @@ class ProcEmitter:
         return out
 
     def block(self, b: ir.ProcBlock, ind: str) -> List[str]:
+        if b.kind == ir.ProcKind.TASK:
+            raise ValueError(f"task block {b.name!r}: task code is simulation only, "
+                             "not lowered to RTL")
         out = [f"{ind}// {b.name}"]
         if b.kind == ir.ProcKind.COMB:
             out.append(f"{ind}always_comb begin")
+            out.extend(self._locals(b, ind + "  ", {f.name for f in self.fields}))
             out.extend(self.stmts(b.body, "=", ind + "  "))
             out.append(f"{ind}end")
+            self.vars = {}
             return out
         if not b.clock_net:
             raise ValueError(f"step block {b.name!r}: clock not resolved to a net")
@@ -69,7 +111,8 @@ class ProcEmitter:
                 v += "_"
             names.add(v)
             self.local[n] = v
-            out.append(f"{ind}  {_decl(dt, v)};")
+            out.append(f"{ind}  {self.decl(dt, v)};")
+        out.extend(self._locals(b, ind + "  ", names))
         for n, v in self.local.items():
             out.append(f"{ind}  {v} = {n};")
         if b.reset_body:
@@ -84,6 +127,7 @@ class ProcEmitter:
         for n, v in self.local.items():
             out.append(f"{ind}  {n} <= {v};")
         self.local = {}
+        self.vars = {}
         out.append(f"{ind}end")
         return out
 
@@ -94,8 +138,12 @@ class ProcEmitter:
         for s in body:
             if isinstance(s, ir.StmtAssign):
                 t = self.target(s.targets[0])
-                o = "=" if t.split("[")[0].split(".")[0] in self.local.values() else op
+                base = t.split("[")[0].split(".")[0]
+                o = "=" if base in self.local.values() or base in self.vars.values() else op
                 out.append(f"{p}{t} {o} {self.expr(s.value)};")
+            elif isinstance(s, ir.StmtAnnAssign):
+                v = self.vars[s.target.name]
+                out.append(f"{p}{v} = {self.expr(s.value) if s.value is not None else chr(39) + '0'};")
             elif isinstance(s, ir.StmtIf):
                 out.append(f"{p}if ({self.expr(s.test)}) begin")
                 out.extend(self.stmts(s.body, op, p + "  "))
@@ -143,7 +191,9 @@ class ProcEmitter:
             if not e.net:
                 raise ValueError("in_reset(): reset not resolved to a net")
             return f"!{e.net}" if e.active_low else e.net
-        if isinstance(e, (ir.ExprRefLocal, ir.ExprRefParam)):
+        if isinstance(e, ir.ExprRefLocal):
+            return self.vars.get(e.name, e.name)
+        if isinstance(e, ir.ExprRefParam):
             return e.name
         if isinstance(e, ir.ExprBin):
             # zuspec-fe-sv maps a comparison to an ExprBin with a CmpOp
@@ -168,10 +218,17 @@ class ProcEmitter:
         if isinstance(e, ir.ExprAttribute):
             return f"{self.expr(e.value, False)}.{e.attr}"
         if isinstance(e, ir.ExprCast):
-            return f"{_base(e.target_type)}'({self.expr(e.value)})"
+            tt = e.target_type
+            if isinstance(tt, ir.DataTypeInt) and tt.width_expr is None:
+                return f"{tt.bits}'({self.expr(e.value)})"
+            if isinstance(tt, ir.DataTypeRef):
+                return f"{self.type_name(tt)}'({self.expr(e.value)})"
+            return f"{_base(tt)}'({self.expr(e.value)})"
         raise ValueError(f"unsupported expression {type(e).__name__} in a process block")
 
 
-def proc_block_lines(comp: ir.DataTypeComponent, ind: str = "  ") -> List[str]:
-    """The ``always_ff``/``always_comb`` blocks of ``comp.proc_blocks``."""
-    return ProcEmitter(comp).lines(ind)
+def proc_block_lines(comp: ir.DataTypeComponent, ind: str = "  ", decl=None,
+                     type_name=None) -> List[str]:
+    """The ``always_ff``/``always_comb`` blocks of ``comp.proc_blocks``
+    (``decl``, ``type_name``: see :class:`ProcEmitter`)."""
+    return ProcEmitter(comp, decl, type_name).lines(ind)

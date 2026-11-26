@@ -21,6 +21,7 @@ matching the prior pssc output and guaranteeing operator-precedence safety.
 """
 from __future__ import annotations
 
+import contextvars
 from typing import Callable, Optional
 
 from zuspec.ir.core import expr as e
@@ -67,6 +68,21 @@ def sv_ident(name: str) -> str:
     """Return an SV-safe identifier (keyword collisions get a ``_`` suffix)."""
     return name + "_" if name in _SV_KEYWORDS else name
 
+
+
+#: Packages whose members ``ExprRefPackage`` writes unqualified: set by
+#: ``core_to_sv.translate_ir_package`` to the package being emitted and
+#: the packages it imports with ``*``.
+LOCAL_PACKAGES: "contextvars.ContextVar[frozenset]" = contextvars.ContextVar(
+    "LOCAL_PACKAGES", default=frozenset())
+
+
+def local_type_name(dt) -> str:
+    """A named type's SV name: ``p::t`` written ``t`` when ``p`` is in
+    ``LOCAL_PACKAGES``."""
+    n = getattr(dt, "ref_name", None) or getattr(dt, "name", None) or "int"
+    head, sep, tail = n.partition("::")
+    return tail if sep and head in LOCAL_PACKAGES.get() and "::" not in tail else n
 
 class SVExprEmitter:
     """Render ``zuspec.ir.core`` expressions to SystemVerilog strings."""
@@ -136,6 +152,10 @@ class SVExprEmitter:
     def _emit_ExprRefUnresolved(self, x) -> str:
         return x.name
 
+    def _emit_ExprRefPackage(self, x) -> str:
+        # Unqualified inside its own package or one importing it (``*``).
+        return x.name if x.package in LOCAL_PACKAGES.get() else f"{x.package}::{x.name}"
+
     def _emit_ExprStaticRef(self, x) -> str:
         return "::".join(x.path)
 
@@ -155,10 +175,16 @@ class SVExprEmitter:
 
     def _emit_ExprBool(self, x) -> str:
         op = "&&" if x.op == e.BoolOp.And else "||"
-        return f" {op} ".join(self.emit(v) for v in x.values)
+        return f" {op} ".join(self._operand(v) for v in x.values)
+
+    def _operand(self, v) -> str:
+        """``v`` as an operand: an ``&&``/``||`` chain (the one form
+        emitted without its own parentheses) is parenthesized."""
+        s = self.emit(v)
+        return f"({s})" if isinstance(v, e.ExprBool) else s
 
     def _emit_ExprCompare(self, x) -> str:
-        parts = [self.emit(x.left)]
+        parts = [self._operand(x.left)]
         for op, comp in zip(x.ops, x.comparators):
             if op == e.CmpOp.In:
                 # chained membership is unusual; render as `inside`
@@ -169,11 +195,12 @@ class SVExprEmitter:
                 parts.append("{" + self.emit(comp) + "}")
             else:
                 parts.append(_CMPOP.get(op, "=="))
-                parts.append(self.emit(comp))
+                parts.append(self._operand(comp))
         return f"({' '.join(parts)})"
 
     def _emit_ExprIfExp(self, x) -> str:
-        return f"({self.emit(x.test)} ? {self.emit(x.body)} : {self.emit(x.orelse)})"
+        return (f"({self._operand(x.test)} ? {self._operand(x.body)} : "
+                f"{self._operand(x.orelse)})")
 
     # ------------------------------------------------------------------ #
     # Membership / ranges                                                  #
@@ -249,8 +276,11 @@ class SVExprEmitter:
         return f"{func}({args})"
 
     def _emit_ExprCast(self, x) -> str:
-        tname = (self._type_namer(x.target_type)
-                 if self._type_namer else str(getattr(x.target_type, "name", x.target_type)))
+        if self._type_namer:
+            tname = self._type_namer(x.target_type)
+        else:
+            from .core_to_sv import sv_type_str
+            tname = sv_type_str(x.target_type, local_type_name)
         return f"{tname}'({self.emit(x.value)})"
 
     def _emit_ExprAwait(self, x) -> str:

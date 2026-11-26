@@ -20,7 +20,8 @@ from zuspec.ir.core import (
     DataType, DataTypeInt, DataTypeEnum, DataTypeString, DataTypeArray,
     DataTypeList, DataTypeRef, Field, FieldKind, RandKind,
     DataTypeParameterized, DataTypeSpecialized, DataTypeProtocol,
-    DataTypeStruct, Function, SignalDirection,
+    DataTypeStruct, Function, SignalDirection, DataTypeMemberRef,
+    Package, PackageImport, PackageConst, PackageType,
     TemplateParamType, TemplateParamValue, TemplateParamEnum,
     TemplateArgType, TemplateArgValue, TemplateArgEnum,
 )
@@ -174,6 +175,11 @@ def sv_type_str(dtype: DataType,
     if isinstance(dtype, DataTypeInt):
         # A four-state type (SV ``logic``) keeps its states.
         kw = "logic" if getattr(dtype, "four_state", None) else "bit"
+        # A width over parameters wins even where its default value is 1
+        # (``logic [w1(P.USER_W)-1:0]``).
+        if (getattr(dtype, "width_expr", None) is not None
+                and not getattr(dtype, "signed", False)):
+            return f"{kw} [{_width_msb(dtype.width_expr)}:0]"
         if dtype.bits == 1:
             return kw
         if getattr(dtype, "signed", False):
@@ -210,6 +216,9 @@ def sv_type_str(dtype: DataType,
         if type_namer is not None:
             return type_namer(dtype)
         return getattr(dtype, "ref_name", None) or "int"
+    if isinstance(dtype, DataTypeMemberRef):
+        # ``axi4_types #(P)::aw_t``, ``t::aw_t``
+        return f"{sv_type_str(dtype.base, type_namer)}::{dtype.member}"
     # Fallback: a named class/handle
     return _name(dtype)
 
@@ -219,10 +228,16 @@ def _expr_str(expr) -> str:
     return SVExprEmitter().emit(expr)
 
 
+# Emitted as a primary, or (``ExprBin``) already in parentheses.
+_PRIMARY = (_e.ExprRefParam, _e.ExprRefLocal, _e.ExprRefUnresolved, _e.ExprRefPackage,
+            _e.ExprAttribute, _e.ExprCall, _e.ExprConstant, _e.ExprBin)
+
+
 def _width_msb(width_expr) -> str:
-    """The MSB for a width expression: ``W-1``, or ``(W*2)-1``."""
+    """The MSB for a width expression: ``W-1``, ``P.W-1``, ``w1(W)-1``, or
+    ``(W*2)-1``."""
     w = _expr_str(width_expr)
-    return f"{w}-1" if w.isidentifier() else f"({w})-1"
+    return f"{w}-1" if isinstance(width_expr, _PRIMARY) else f"({w})-1"
 
 
 def _template_arg_str(arg, type_namer=None) -> str:
@@ -308,9 +323,11 @@ def translate_method(fn: Function, *, pure: bool = False,
                           direction=_DIR.get(a.direction, "input"), default=d))
     body = None if pure else translate_stmts(fn.body)
     attrs = sv_attributes(fn)
+    life = (fn.metadata or {}).get("lifetime")
     if fn.is_async or fn.is_task:
         return SVTaskDecl(name=fn.name, args=args, is_virtual=True,
-                          is_pure=pure, body=body, attributes=attrs)
+                          is_pure=pure, body=body, attributes=attrs,
+                          lifetime=life)
     if fn.name == "new":
         # A constructor: neither virtual nor typed.
         return SVFunctionDecl(name="new", args=args, return_type="",
@@ -321,13 +338,14 @@ def translate_method(fn: Function, *, pure: bool = False,
     static = bool((fn.metadata or {}).get("static")) and not pure
     return SVFunctionDecl(name=fn.name, args=args, return_type=ret,
                           is_virtual=not static, is_pure=pure, is_static=static,
-                          body=body, attributes=attrs)
+                          body=body, attributes=attrs, lifetime=life)
 
 
 def _split_methods(methods, **kw):
     tasks, funcs = [], []
-    for fn in methods:
+    for i, fn in enumerate(methods):
         d = translate_method(fn, **kw)
+        d.pos = i
         (tasks if isinstance(d, SVTaskDecl) else funcs).append(d)
     return tasks, funcs
 
@@ -341,7 +359,9 @@ def translate_protocol(proto: DataTypeProtocol, *,
     tasks, funcs = _split_methods(proto.methods, pure=True,
                                   type_namer=type_namer)
     return SVInterfaceClass(name=sv_name or proto.name, tasks=tasks,
-                            functions=funcs)
+                            functions=funcs,
+                            typedefs=_class_typedefs(proto, type_namer),
+                            attributes=sv_attributes(proto))
 
 
 def translate_decl(dtype: DataType, *,
@@ -357,27 +377,43 @@ def translate_decl(dtype: DataType, *,
         return translate_protocol(dtype, type_namer=type_namer)
     params: List[str] = []
     name = dtype.name
+    attrs: List[str] = []
     if isinstance(dtype, DataTypeParameterized):
         if dtype.body is None:
             raise ValueError(f"template {dtype.name} has no body")
         params = [translate_param(tp, type_namer)
                   for tp in dtype.template_params]
+        attrs = sv_attributes(dtype)
         dtype = dtype.body
         if isinstance(dtype, DataTypeProtocol):
             ic = translate_protocol(dtype, sv_name=name,
                                     type_namer=type_namer)
             ic.params = params
+            ic.attributes = _merge(attrs, ic.attributes)
             return ic
     if not isinstance(dtype, DataTypeStruct):
         raise NotImplementedError(f"translate_decl: {type(dtype).__name__}")
     sup = dtype.super
     extends = sv_type_str(sup, type_namer) if sup is not None else None
     tasks, funcs = _split_methods(dtype.functions, type_namer=type_namer)
-    return translate_class(
+    cls = translate_class(
         dtype, sv_name=name, extends=extends, params=params,
         implements=[i if isinstance(i, str) else sv_type_str(i, type_namer)
                     for i in getattr(dtype, "implements", None) or []],
         tasks=tasks, functions=funcs, type_namer=type_namer)
+    cls.typedefs = _class_typedefs(dtype, type_namer)
+    cls.attributes = _merge(attrs, sv_attributes(dtype))
+    return cls
+
+
+def _merge(a: List[str], b: List[str]) -> List[str]:
+    return a + [x for x in b if x not in a]
+
+
+def _class_typedefs(dtype, type_namer) -> List:
+    """A class's or interface's ``TypeDef``s as SV typedef items."""
+    return [translate_typedef(td.datatype, sv_name=td.name, type_namer=type_namer)
+            for td in getattr(dtype, "typedefs", None) or []]
 
 
 def _rand_flags(rand_kind) -> tuple:
@@ -465,7 +501,8 @@ def translate_typedef(dtype: DataType, *, sv_name: Optional[str] = None,
         return SVTypedefStruct(
             name=name, packed=bool(getattr(dtype, "packed", True)),
             fields=[SVField(name=f.name,
-                            dtype=sv_type_str(f.datatype, type_namer))
+                            dtype=sv_type_str(f.datatype, type_namer),
+                            attributes=sv_attributes(f))
                     for f in dtype.fields])
     if isinstance(dtype, DataTypeEnum):
         base = dtype.base_type
@@ -478,6 +515,8 @@ def translate_typedef(dtype: DataType, *, sv_name: Optional[str] = None,
         target = (type_namer(DataTypeRef(ref_name=dtype.ref_name))
                   if type_namer is not None else dtype.ref_name)
         return SVRawItem(lines=[f"typedef {target} {name};"])
+    if isinstance(dtype, (DataTypeMemberRef, DataTypeSpecialized)):
+        return SVRawItem(lines=[f"typedef {sv_type_str(dtype, type_namer)} {name};"])
     raise NotImplementedError(f"translate_typedef: {type(dtype).__name__}")
 
 
@@ -583,3 +622,74 @@ def translate_package(name: str, types, decls, *,
                  for n in order)
     return SVPackage(name=name, items=items, imports=list(imports))
 
+
+
+def translate_ir_package(pkg: Package, types, decls, *,
+                         type_namer: Optional[Callable[[DataType], str]] = None
+                         ) -> SVPackage:
+    """Build a ``package`` from an IR ``Package``: its items in source
+    order. Imports become ``import``s; a ``PackageConst`` a ``localparam``;
+    a package function an SV function (``automatic`` when its
+    ``metadata["lifetime"]`` says so); a ``PackageType`` its typedef (from
+    ``types``, by qualified name) or its class declaration (from ``decls``,
+    by name). A class used by an earlier one gets a ``typedef class``.
+
+    A member of this package or of one it imports with ``*`` is written
+    unqualified (``prm_t``, ``w1(...)``); any other with its package
+    (``p::prm_t``)."""
+    from .expr_emit import LOCAL_PACKAGES
+    local = frozenset([pkg.name] + [i.package for i in pkg.imports if i.name is None])
+
+    def _unq(n: str) -> str:
+        head, sep, tail = n.partition("::")
+        return tail if sep and head in local and "::" not in tail else n
+
+    if type_namer is None:
+        def type_namer(dt):
+            return _unq(getattr(dt, "ref_name", None)
+                        or getattr(dt, "name", None) or "int")
+
+    types = dict(types.items() if isinstance(types, dict) else types)
+    by_name = {d.name: d for d in decls}
+    token = LOCAL_PACKAGES.set(local)
+    try:
+        imports, items, seen = [], [], set()
+        for it in pkg.items:
+            if isinstance(it, PackageImport):
+                if it.name is None:
+                    imports.append(it.package)
+                else:
+                    items.append(SVRawItem(lines=[f"import {it.package}::{it.name};"]))
+            elif isinstance(it, PackageConst):
+                dt = (sv_type_str(it.datatype, type_namer)
+                      if it.datatype is not None else "int")
+                val = _expr_str(it.value) if it.value is not None else "0"
+                items.append(SVRawItem(lines=[f"localparam {dt} {it.name} = {val};"]))
+            elif isinstance(it, Function):
+                d = translate_method(it, type_namer=type_namer)
+                d.is_virtual = False
+                items.append(d)
+            elif isinstance(it, PackageType):
+                local_name = _unq(it.name)
+                if it.name in types:
+                    items.append(translate_typedef(types[it.name], sv_name=local_name,
+                                                   type_namer=type_namer))
+                elif local_name in by_name:
+                    items.append(by_name[local_name])
+                    seen.add(local_name)
+        # classes in source order; a class used before it is declared is
+        # forward-declared
+        order = [x.name for x in items if isinstance(x, DataType)]
+        pos = {n: i for i, n in enumerate(order)}
+        forward = []
+        for n in order:
+            hard, soft = _decl_deps(by_name[n])
+            for m in sorted({_unq(x) for x in hard | soft}):
+                if m in pos and pos[m] > pos[n] and m not in forward:
+                    forward.append(m)
+        out = [SVForwardDecl(class_name=n) for n in forward]
+        out.extend(translate_decl(x, type_namer=type_namer)
+                   if isinstance(x, DataType) else x for x in items)
+    finally:
+        LOCAL_PACKAGES.reset(token)
+    return SVPackage(name=pkg.name, items=out, imports=imports)

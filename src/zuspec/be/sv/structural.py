@@ -51,6 +51,7 @@ domains resolved to its nets, follow the instances as ``always_ff`` and
 """
 from __future__ import annotations
 
+import dataclasses as dc
 import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Union
@@ -196,6 +197,26 @@ class ValueTypes:
                         items(getattr(x, "orelse", []) or [])
             items(c.module_instances)
             items(getattr(c, "generates", None) or [])
+
+            def body_types(x):
+                # block locals and casts name types too
+                if isinstance(x, list):
+                    for y in x:
+                        body_types(y)
+                elif isinstance(x, ir.StmtAnnAssign):
+                    visit_type(x.ir_type)
+                    body_types(x.value)
+                elif isinstance(x, ir.ExprCast):
+                    visit_type(x.target_type)
+                    body_types(x.value)
+                elif dc.is_dataclass(x) and not isinstance(x, (type, ir.DataType)):
+                    for fl in dc.fields(x):
+                        v = getattr(x, fl.name)
+                        if isinstance(v, list) or dc.is_dataclass(v):
+                            body_types(v)
+            for b in getattr(c, "proc_blocks", None) or []:
+                body_types(b.body)
+                body_types(b.reset_body)
 
         # SV names: the type's own name, else qualified by its scope.
         used: set = set()
@@ -431,7 +452,8 @@ class StructuralEmitter:
         for g in getattr(c, "generates", None) or []:
             lines.extend(self._generate(g, "  "))
             lines.append("")
-        lines.extend(proc_block_lines(c))
+        lines.extend(proc_block_lines(c, decl=lambda dt, n: _decl(dt, n, self.types),
+                                      type_name=lambda dt: _ref(dt, self.types)))
         lines.append("endmodule")
         return "\n".join(lines) + "\n"
 

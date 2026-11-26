@@ -94,7 +94,8 @@ class SVEmitter:
             lines.append(f"{indent}}} {field.name};")
             return "\n".join(lines)
         if field.dtype:
-            return f"{indent}{field.dtype} {field.name};"
+            attr = self._attr_prefix(getattr(field, "attributes", None) or [])
+            return f"{indent}{attr}{field.dtype} {field.name};"
         if field.width > 1:
             return f"{indent}logic [{field.width - 1}:0] {field.name};"
         return f"{indent}logic {field.name};"
@@ -140,7 +141,17 @@ class SVEmitter:
     # ------------------------------------------------------------------
 
     def emit_package(self, pkg: SVPackage) -> str:
-        """Emit a ``package … endpackage`` block."""
+        """Emit a ``package … endpackage`` block. While it is emitted, a
+        member of this package or of one it imports with ``*`` is written
+        unqualified (see ``expr_emit.LOCAL_PACKAGES``)."""
+        from .expr_emit import LOCAL_PACKAGES
+        token = LOCAL_PACKAGES.set(frozenset([pkg.name, *pkg.imports]))
+        try:
+            return self._emit_package(pkg)
+        finally:
+            LOCAL_PACKAGES.reset(token)
+
+    def _emit_package(self, pkg: SVPackage) -> str:
         lines: List[str] = [f"package {pkg.name};"]
         if pkg.imports:
             lines.append("")
@@ -233,7 +244,8 @@ class SVEmitter:
         if td.is_pure:
             return f"{indent}{attr}pure virtual task {td.name}{args_str};"
         prefix = "virtual " if td.is_virtual else ""
-        lines: List[str] = [f"{indent}{attr}{prefix}task {td.name}{args_str};"]
+        life = f"{td.lifetime} " if td.lifetime else ""
+        lines: List[str] = [f"{indent}{attr}{prefix}task {life}{td.name}{args_str};"]
         lines.extend(self._body_lines(td, indent))
         lines.append(f"{indent}endtask")
         return "\n".join(lines)
@@ -246,7 +258,8 @@ class SVEmitter:
             return f"{indent}{attr}pure virtual function {fd.return_type} {fd.name}{args_str};"
         prefix = "static " if fd.is_static else ("virtual " if fd.is_virtual else "")
         ret_str = f"{fd.return_type} " if fd.return_type else ""
-        lines: List[str] = [f"{indent}{attr}{prefix}function {ret_str}{fd.name}{args_str};"]
+        life = f"{fd.lifetime} " if fd.lifetime else ""
+        lines: List[str] = [f"{indent}{attr}{prefix}function {life}{ret_str}{fd.name}{args_str};"]
         lines.extend(self._body_lines(fd, indent))
         lines.append(f"{indent}endfunction")
         return "\n".join(lines)
@@ -267,7 +280,10 @@ class SVEmitter:
         kw = "virtual class" if cls.is_virtual else "class"
         ext = f" extends {cls.extends_name}" if cls.extends_name else ""
         impl = f" implements {', '.join(cls.implements)}" if cls.implements else ""
+        if cls.attributes:
+            parts.append(self._attr_prefix(cls.attributes).rstrip())
         parts.append(f"{kw} {cls.name}{self._param_list(cls.params)}{ext}{impl};")
+        parts.extend(self._class_typedefs(cls.typedefs))
 
         # Fields
         for cf in cls.fields:
@@ -278,15 +294,11 @@ class SVEmitter:
             parts.append("")
             parts.append(self.emit_constraint_block(cb))
 
-        # Functions
-        for fd in cls.functions:
+        # Methods: in source order when known, else functions then tasks
+        for md in _methods(cls.functions, cls.tasks):
             parts.append("")
-            parts.append(self.emit_function_decl(fd))
-
-        # Tasks
-        for td in cls.tasks:
-            parts.append("")
-            parts.append(self.emit_task_decl(td))
+            parts.append(self.emit_task_decl(md) if isinstance(md, SVTaskDecl)
+                         else self.emit_function_decl(md))
 
         # Miscellaneous items
         for item in cls.items:
@@ -295,6 +307,11 @@ class SVEmitter:
 
         parts.append(f"endclass")
         return "\n".join(parts)
+
+    def _class_typedefs(self, typedefs) -> List[str]:
+        """Class-scope typedef lines, indented into the body."""
+        return [f"  {line}" for td in typedefs
+                for line in self.emit_one(td).splitlines()]
 
     def emit_interface_class(self, ic: SVInterfaceClass) -> str:
         """Emit an ``interface class name [extends I, ...]; ... endclass`` block.
@@ -309,12 +326,15 @@ class SVEmitter:
             parts.append(f"typedef class {fwd};")
 
         ext = f" extends {', '.join(ic.extends)}" if ic.extends else ""
+        if ic.attributes:
+            parts.append(self._attr_prefix(ic.attributes).rstrip())
         parts.append(f"interface class {ic.name}{self._param_list(ic.params)}{ext};")
+        parts.extend(self._class_typedefs(ic.typedefs))
 
-        for fd in ic.functions:
-            parts.append(self.emit_function_decl(dc.replace(fd, is_pure=True)))
-        for td in ic.tasks:
-            parts.append(self.emit_task_decl(dc.replace(td, is_pure=True)))
+        for md in _methods(ic.functions, ic.tasks):
+            md = dc.replace(md, is_pure=True)
+            parts.append(self.emit_task_decl(md) if isinstance(md, SVTaskDecl)
+                         else self.emit_function_decl(md))
 
         parts.append("endclass")
         return "\n".join(parts)
@@ -436,3 +456,13 @@ class SVEmitter:
             else:
                 flat.extend(self.emit_one(construct).splitlines())
         return "\n".join(flat)
+
+
+def _methods(functions, tasks):
+    """A class's methods in emission order: by ``pos`` (source order)
+    where set, the others after them; with no ``pos`` at all, functions
+    then tasks."""
+    ms = list(functions) + list(tasks)
+    if all(m.pos is None for m in ms):
+        return ms
+    return sorted(ms, key=lambda m: (m.pos is None, m.pos or 0))

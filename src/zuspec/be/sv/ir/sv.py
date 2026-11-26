@@ -43,6 +43,8 @@ class SVField:
     fields: List["SVField"] = dc.field(default_factory=list)  # when non-empty, this
     # field is an anonymous nested ``struct packed { <fields> } <name>;`` (takes
     # precedence over ``width``/``dtype``).
+    #: SV attribute instances, emitted as ``(* ... *)`` before the member.
+    attributes: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass
@@ -131,6 +133,11 @@ class SVTaskDecl:
     body: Optional[List[Any]] = dc.field(default=None)
     #: SV attribute instances, emitted as ``(* ... *)`` before the declaration.
     attributes: List[str] = dc.field(default_factory=list)
+    #: Position among the class's methods (source order). When set, the
+    #: emitter interleaves tasks and functions by it; unset ones follow.
+    pos: Optional[int] = dc.field(default=None)
+    #: ``automatic`` or ``static`` after ``task``/``function``, or None.
+    lifetime: Optional[str] = dc.field(default=None)
 
 
 @dc.dataclass
@@ -158,6 +165,11 @@ class SVFunctionDecl:
     body: Optional[List[Any]] = dc.field(default=None)
     #: SV attribute instances, emitted as ``(* ... *)`` before the declaration.
     attributes: List[str] = dc.field(default_factory=list)
+    #: Position among the class's methods (source order). When set, the
+    #: emitter interleaves tasks and functions by it; unset ones follow.
+    pos: Optional[int] = dc.field(default=None)
+    #: ``automatic`` or ``static`` after ``task``/``function``, or None.
+    lifetime: Optional[str] = dc.field(default=None)
 
 
 @dc.dataclass
@@ -359,6 +371,11 @@ class SVClass:
     tasks: List[SVTaskDecl] = dc.field(default_factory=list)
     functions: List[SVFunctionDecl] = dc.field(default_factory=list)
     forward_decls: List[str] = dc.field(default_factory=list)
+    #: Class-scope typedefs (``SVTypedefStruct``/``SVTypedefEnum``/
+    #: ``SVRawItem``), emitted first in the body.
+    typedefs: List[Any] = dc.field(default_factory=list)
+    #: SV attribute instances, emitted as ``(* ... *)`` before the class.
+    attributes: List[str] = dc.field(default_factory=list)
     items: List[Any] = dc.field(default_factory=list)
 
 
@@ -385,6 +402,11 @@ class SVInterfaceClass:
     tasks: List[SVTaskDecl] = dc.field(default_factory=list)
     functions: List[SVFunctionDecl] = dc.field(default_factory=list)
     forward_decls: List[str] = dc.field(default_factory=list)
+    #: Class-scope typedefs (``SVTypedefStruct``/``SVTypedefEnum``/
+    #: ``SVRawItem``), emitted first in the body.
+    typedefs: List[Any] = dc.field(default_factory=list)
+    #: SV attribute instances, emitted as ``(* ... *)`` before the class.
+    attributes: List[str] = dc.field(default_factory=list)
 
 
 @dc.dataclass

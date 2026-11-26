@@ -112,6 +112,15 @@ def test_unresolved_clock():
         proc_block_lines(c)
 
 
+def test_task_block_rejected():
+    """A task block (run(): crossing ports only) is simulation only."""
+    c = cnt()
+    c.proc_blocks.append(ir.ProcBlock(name="run", kind=ir.ProcKind.TASK, func="run",
+                                      writes=[["q"]]))
+    with pytest.raises(ValueError, match="task block 'run'"):
+        proc_block_lines(c)
+
+
 @pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not on PATH")
 @pytest.mark.parametrize("make,top", [(cnt, "cnt"), (two, "two"), (gen, "gen")])
 def test_verilator_lint(tmp_path, make, top):

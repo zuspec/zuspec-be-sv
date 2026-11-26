@@ -638,7 +638,8 @@ class SyncParamEmitter:
     def composite(self) -> List[str]:
         c = self.comp
         out = [""]
-        out += [f"  {_decl(f.datatype, f.name)};" for f in c.fields
+        # Wires between the children's ports, which are packed.
+        out += [f"  {_decl(f.datatype, f.name, True)};" for f in c.fields
                 if not isinstance(f, ir.FieldInOut)]
         for mi in c.module_instances:
             params = ""

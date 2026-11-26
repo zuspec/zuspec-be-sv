@@ -160,12 +160,22 @@ for use with `SVEmitter`:
 
 - `translate_decl(dtype)`: a `DataTypeProtocol` to an `interface class`; a
   class or `DataTypeParameterized` to a `class` with its parameters,
-  `extends`, `implements` and methods.
+  `extends`, `implements` and methods. Methods keep the IR's order, tasks
+  and functions interleaved (`SVTaskDecl.pos`/`SVFunctionDecl.pos`; a class
+  built without positions emits functions, then tasks).
 - `translate_typedef(dtype)`: a packed struct, an enum (`bit` based unless
   4-state) or a named int/ref to its `typedef`.
 - `translate_package(name, types, decls)`: a `package` of typedefs (in the
   given order) and declarations; classes are ordered so bases and interfaces
   come first, with `typedef class` for any cycle.
+- `translate_ir_package(pkg, types, decls)`: a `package` from an IR
+  `Package`, its items in source order: imports, `localparam`s, functions
+  (`automatic` when `metadata["lifetime"]` says so), typedefs (from `types`)
+  and classes (from `decls`). A member of the package, or of one it imports
+  with `*`, is written unqualified; any other `ExprRefPackage` as `pkg::name`.
+- Class and interface-class typedefs (`TypeDef`s), `DataTypeMemberRef`
+  (`axi4_types #(P)::aw_t`), and attributes on classes, interface classes and
+  struct members are emitted. A nested `&&`/`||` is parenthesized.
 
 ```python
 from zuspec.be.sv.ir.core_to_sv import translate_package
