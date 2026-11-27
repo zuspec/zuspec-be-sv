@@ -276,6 +276,10 @@ class SVExprEmitter:
         return f"{func}({args})"
 
     def _emit_ExprCast(self, x) -> str:
+        # a width (an int, or its digits): a size cast, ``N'(x)``
+        if isinstance(x.target_type, int) or (isinstance(x.target_type, str)
+                                              and x.target_type.isdigit()):
+            return f"{x.target_type}'({self.emit(x.value)})"
         if self._type_namer:
             tname = self._type_namer(x.target_type)
         else:
